@@ -37,6 +37,34 @@ docker version
 docker compose version
 ```
 
+### 1.1 国内网络：配置镜像加速（强烈推荐）
+
+若构建时报 `auth.docker.io` / `registry-1.docker.io` **i/o timeout**，是访问 Docker Hub 不通。在 Debian 上配置 registry mirror 后重启 Docker：
+
+```bash
+sudo mkdir -p /etc/docker
+sudo tee /etc/docker/daemon.json >/dev/null <<'EOF'
+{
+  "registry-mirrors": [
+    "https://docker.m.daocloud.io",
+    "https://docker.1ms.run"
+  ]
+}
+EOF
+sudo systemctl daemon-reload
+sudo systemctl restart docker
+```
+
+然后重试 `docker compose build`。镜像地址若失效，可换成当前可用的国内加速源。
+
+构建 Python / 前端依赖也可走国内源（编辑 `docker-compose.yml` 的 `build.args`）：
+
+```yaml
+args:
+  PIP_INDEX_URL: https://pypi.tuna.tsinghua.edu.cn/simple
+  NPM_REGISTRY: https://registry.npmmirror.com
+```
+
 ---
 
 ## 2. 部署前准备
@@ -71,6 +99,7 @@ sudo chown -R 10001:10001 data
 cd /path/to/hot-analyze
 
 # 构建（前端 + Python 依赖多阶段）
+# 若仍超时：先完成 §1.1 镜像加速，再执行
 docker compose build
 
 # 后台启动

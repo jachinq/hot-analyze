@@ -3,6 +3,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # 国内构建可改为清华源，原始地址：https://pypi.org/simple
+        PIP_INDEX_URL: https://pypi.tuna.tsinghua.edu.cn/simple
+        # 国内构建可改为 npm 镜像源，原始地址：https://registry.npmjs.org
+        NPM_REGISTRY: https://registry.npmmirror.com
     image: hot-analyze:latest
     container_name: hot-analyze
     restart: unless-stopped

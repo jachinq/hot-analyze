@@ -1,5 +1,5 @@
-# syntax=docker/dockerfile:1
 # 多阶段构建：前端静态资源 + Python 依赖 → 精简运行时镜像
+# 注意：不要写 # syntax=docker/dockerfile:1，国内拉取 auth.docker.io 常超时
 
 ############################
 # 1) 前端构建
@@ -8,6 +8,11 @@ FROM node:22-alpine AS frontend
 
 WORKDIR /src
 RUN corepack enable
+
+# 国内网络可取消下一行注释，或构建时传入：
+# docker compose build --build-arg NPM_REGISTRY=https://registry.npmmirror.com
+ARG NPM_REGISTRY=
+RUN if [ -n "$NPM_REGISTRY" ]; then npm config set registry "$NPM_REGISTRY"; fi
 
 COPY frontend/package.json frontend/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
@@ -20,14 +25,19 @@ RUN pnpm build
 ############################
 FROM python:3.11-slim-bookworm AS python-deps
 
-COPY --from=ghcr.io/astral-sh/uv:0.8.4 /uv /usr/local/bin/uv
-
-WORKDIR /app
-ENV UV_COMPILE_BYTECODE=1 \
+# 用 pip 安装 uv，避免再拉取 ghcr.io/astral-sh/uv（国内常超时）
+ARG PIP_INDEX_URL=https://pypi.org/simple
+ENV PIP_INDEX_URL=${PIP_INDEX_URL} \
+    UV_INDEX_URL=${PIP_INDEX_URL} \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
     UV_PYTHON_DOWNLOADS=0 \
     UV_PROJECT_ENVIRONMENT=/app/.venv
 
+RUN pip install --no-cache-dir "uv==0.8.4"
+
+WORKDIR /app
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
