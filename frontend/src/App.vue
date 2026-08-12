@@ -5,6 +5,7 @@
       <nav>
         <router-link to="/">首页</router-link>
         <router-link to="/history">历史检索</router-link>
+        <router-link to="/settings">设置</router-link>
       </nav>
     </header>
     <main class="main">

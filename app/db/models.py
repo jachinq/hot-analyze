@@ -71,6 +71,18 @@ class AIConfigRow(Base):
     )
 
 
+class SystemSettingsRow(Base):
+    """运行时业务配置（collector / ai 全局 / scheduler / pipeline）。"""
+
+    __tablename__ = "system_settings"
+
+    section: Mapped[str] = mapped_column(String(32), primary_key=True)
+    payload: Mapped[str] = mapped_column(Text, nullable=False)  # JSON
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime, default=func.now(), onupdate=func.now()
+    )
+
+
 class AICallLog(Base):
     __tablename__ = "ai_call_log"
 

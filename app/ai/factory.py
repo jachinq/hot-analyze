@@ -13,9 +13,9 @@ from sqlalchemy.orm import Session
 from app.ai.base import AIProvider
 from app.ai.ollama import OllamaProvider
 from app.ai.openai_compat import OpenAICompatProvider
-from app.config import get_config
 from app.db.models import AIConfigRow
 from app.security.crypto import decrypt_secret
+from app.settings.runtime import get_runtime_config
 
 from app.ai.errors import InvalidAIJsonError
 
@@ -78,6 +78,16 @@ def _resolve_api_key(
     return ""
 
 
+def resolve_api_key(
+    *,
+    name: str,
+    provider: str,
+    stored_key: str | None,
+) -> str:
+    """对外暴露的 API Key 解析。"""
+    return _resolve_api_key(name=name, provider=provider, stored_key=stored_key)
+
+
 def _build_provider(
     *,
     name: str,
@@ -92,7 +102,7 @@ def _build_provider(
         logger.debug("skip provider %s: online model missing API key", name)
         return None
 
-    timeout = float(get_config().ai.timeout_sec or 120.0)
+    timeout = float(get_runtime_config().ai.timeout_sec or 120.0)
     if provider == "ollama":
         return OllamaProvider(
             name=name,
@@ -120,7 +130,7 @@ def _rows_from_db(db: Session) -> list[AIConfigRow]:
 
 
 def _fallback_from_yaml() -> list[dict[str, Any]]:
-    cfg = get_config()
+    cfg = get_runtime_config()
     items = [p.model_dump() for p in cfg.ai.providers if p.enabled]
     items.sort(key=lambda x: x.get("priority", 100))
     return items
@@ -133,7 +143,7 @@ def list_candidate_providers(db: Session | None = None) -> list[AIProvider]:
     if _PROVIDERS_CACHE is not None and (now - _PROVIDERS_CACHE_AT) < _PROVIDERS_CACHE_TTL:
         return list(_PROVIDERS_CACHE)
 
-    cfg = get_config()
+    cfg = get_runtime_config()
     providers: list[AIProvider] = []
     seen: set[str] = set()
     skipped_no_key: list[str] = []

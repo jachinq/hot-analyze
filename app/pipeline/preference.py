@@ -5,14 +5,15 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from app.config import CategoryPreferenceConfig, get_config
+from app.config import CategoryPreferenceConfig
+from app.settings.runtime import get_runtime_config
 
 logger = logging.getLogger(__name__)
 _warned_conflicts: set[str] = set()
 
 
 def _pref() -> CategoryPreferenceConfig:
-    return get_config().pipeline.category_preference
+    return get_runtime_config().pipeline.category_preference
 
 
 def category_delta(category: str | None, pref: CategoryPreferenceConfig | None = None) -> int:

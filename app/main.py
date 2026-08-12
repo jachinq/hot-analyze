@@ -12,11 +12,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import config_ai, hot, jobs, report
+from app.api import config_ai, hot, jobs, report, settings
 from app.config import ROOT_DIR, get_config
 from app.db.migrate import init_db
 from app.db.session import get_engine
 from app.scheduler.jobs import shutdown_scheduler, start_scheduler
+from app.settings.runtime import get_runtime_config
 
 logging.basicConfig(
     level=logging.INFO,
@@ -48,6 +49,7 @@ app.include_router(report.router)
 app.include_router(hot.router)
 app.include_router(config_ai.router)
 app.include_router(jobs.router)
+app.include_router(settings.router)
 
 
 @app.get("/health")
@@ -64,7 +66,8 @@ async def health():
 
     collector_ok = None
     try:
-        url = f"{cfg.collector.base_url.rstrip('/')}/health"
+        runtime = get_runtime_config()
+        url = f"{runtime.collector.base_url.rstrip('/')}/health"
         async with httpx.AsyncClient(timeout=3.0) as client:
             r = await client.get(url)
             collector_ok = r.status_code < 500

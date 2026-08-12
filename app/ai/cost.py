@@ -8,8 +8,8 @@ from datetime import date, datetime
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.config import get_config
 from app.db.models import AICallLog
+from app.settings.runtime import get_runtime_config
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ def today_usage(db: Session, day: date | None = None) -> tuple[int, int]:
 
 
 def check_quota(db: Session) -> None:
-    cfg = get_config()
+    cfg = get_runtime_config()
     calls, tokens = today_usage(db)
     if calls >= cfg.ai.max_calls_per_day:
         raise CostExceededError(f"daily AI calls exceeded: {calls}>={cfg.ai.max_calls_per_day}")

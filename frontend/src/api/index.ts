@@ -73,6 +73,81 @@ export interface AnalyzeAccepted {
   reused?: number
 }
 
+export interface AIGlobals {
+  prefer_local: boolean
+  max_calls_per_day: number
+  max_tokens_per_day: number
+  timeout_sec: number
+  default_provider: string
+}
+
+export interface CollectorSettings {
+  base_url: string
+  list_path: string
+  timeout_sec: number
+  max_retries: number
+}
+
+export interface SchedulerSettings {
+  daily_cron: string
+  timezone: string
+  enabled: boolean
+}
+
+export interface PipelineSettings {
+  cluster: {
+    enabled: boolean
+    method: string
+    similarity_threshold: number
+  }
+  classify: {
+    rule_first: boolean
+    ai_fallback: boolean
+  }
+  category_preference: {
+    care: string[]
+    ignore: string[]
+    boost_max: number
+    suppress_max: number
+  }
+  batch_size: number
+  report_top_n: number
+}
+
+export interface SystemSettings {
+  collector: CollectorSettings
+  ai: AIGlobals
+  scheduler: SchedulerSettings
+  pipeline: PipelineSettings
+}
+
+export interface AIProviderConfig {
+  id: number
+  name: string
+  provider: string
+  model: string
+  api_url?: string | null
+  api_key: string
+  enabled: boolean
+  priority: number
+  updated_at?: string | null
+}
+
+export type AIProviderUpdate = {
+  model?: string
+  api_url?: string
+  api_key?: string
+  enabled?: boolean
+  priority?: number
+}
+
+export interface ConnectionTestResult {
+  ok: boolean
+  message: string
+  latency_ms?: number | null
+  detail?: Record<string, unknown> | null
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     headers: { Accept: 'application/json', ...(init?.headers || {}) },
@@ -124,4 +199,38 @@ export const api = {
     })
   },
   jobs: (date: string) => request<JobRun[]>(`/api/jobs/${date}`),
+  getSettings: () => request<SystemSettings>('/api/settings'),
+  updateSettings: (body: Partial<SystemSettings>) =>
+    request<SystemSettings>('/api/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+  listAiConfig: () => request<AIProviderConfig[]>('/api/ai/config'),
+  updateAiConfig: (id: number, body: AIProviderUpdate) =>
+    request<AIProviderConfig>(`/api/ai/config/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+  testCollector: (body: CollectorSettings) =>
+    request<ConnectionTestResult>('/api/settings/test/collector', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+  testAiProvider: (body: {
+    id?: number
+    name?: string
+    provider: string
+    api_url: string
+    model: string
+    api_key?: string
+    timeout_sec?: number
+  }) =>
+    request<ConnectionTestResult>('/api/settings/test/ai-provider', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
 }

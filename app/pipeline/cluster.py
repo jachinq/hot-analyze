@@ -8,7 +8,7 @@ import re
 from dataclasses import dataclass
 
 from app.clients.hot_collector import HotItem
-from app.config import get_config
+from app.settings.runtime import get_runtime_config
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +104,7 @@ def _tfidf_clusters(items: list[HotItem], threshold: float) -> list[Cluster]:
 
 
 def cluster_hots(items: list[HotItem]) -> list[Cluster]:
-    cfg = get_config().pipeline.cluster
+    cfg = get_runtime_config().pipeline.cluster
     if not cfg.enabled or not items:
         return [
             Cluster(

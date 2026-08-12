@@ -1,7 +1,8 @@
-"""简易建表与 AI 配置种子同步。"""
+"""简易建表与配置种子同步。"""
 
 from __future__ import annotations
 
+import json
 import logging
 
 from sqlalchemy import inspect, select, text
@@ -9,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.config import get_config
 from app.db import models  # noqa: F401 — 注册表
-from app.db.models import AIConfigRow
+from app.db.models import AIConfigRow, SystemSettingsRow
 from app.db.session import get_engine, get_session_factory
 from app.security.crypto import encrypt_secret
 
@@ -23,7 +24,11 @@ def init_db() -> None:
     SessionLocal = get_session_factory()
     with SessionLocal() as db:
         seed_ai_config_from_yaml(db)
+        seed_system_settings_from_yaml(db)
         db.commit()
+        from app.settings.runtime import load_runtime_overlay
+
+        load_runtime_overlay(db)
     logger.info("database initialized")
 
 
@@ -51,7 +56,7 @@ def _ensure_job_run_progress_columns(engine) -> None:
 
 
 def seed_ai_config_from_yaml(db: Session) -> None:
-    """将 config.yaml 中的 providers 同步到 ai_config（已存在则跳过密钥覆盖）。"""
+    """将 config.yaml 中的 providers 同步到 ai_config（已存在行不覆盖）。"""
     cfg = get_config()
     encrypt = cfg.security.encrypt_api_key
     for p in cfg.ai.providers:
@@ -70,12 +75,33 @@ def seed_ai_config_from_yaml(db: Session) -> None:
                     priority=p.priority,
                 )
             )
-        else:
-            # 更新非密钥字段；密钥仅在库中为空且 yaml/env 有值时写入
-            existing.provider = p.provider
-            existing.model = p.model
-            existing.api_url = p.api_url
-            existing.enabled = p.enabled
-            existing.priority = p.priority
-            if not existing.api_key and enc_key:
-                existing.api_key = enc_key
+        elif not existing.api_key and enc_key:
+            # 仅补空密钥，不覆盖 model/api_url/enabled/priority
+            existing.api_key = enc_key
+
+
+def seed_system_settings_from_yaml(db: Session) -> None:
+    """某 section 不存在时从 YAML 写入；已存在则跳过。"""
+    cfg = get_config()
+    section_payloads = {
+        "collector": cfg.collector.model_dump(),
+        "ai": {
+            "prefer_local": cfg.ai.prefer_local,
+            "max_calls_per_day": cfg.ai.max_calls_per_day,
+            "max_tokens_per_day": cfg.ai.max_tokens_per_day,
+            "timeout_sec": cfg.ai.timeout_sec,
+            "default_provider": cfg.ai.default_provider,
+        },
+        "scheduler": cfg.scheduler.model_dump(),
+        "pipeline": cfg.pipeline.model_dump(),
+    }
+    for section, payload in section_payloads.items():
+        existing = db.get(SystemSettingsRow, section)
+        if existing is None:
+            db.add(
+                SystemSettingsRow(
+                    section=section,
+                    payload=json.dumps(payload, ensure_ascii=False),
+                )
+            )
+            logger.info("seeded system_settings section=%s", section)

@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
+from app.ai.factory import clear_provider_cache
 from app.config import get_config
 from app.db.models import AIConfigRow
 from app.schemas import AIConfigOut, AIConfigUpdate, ApiResponse
@@ -60,4 +61,5 @@ def update_ai_config(
     row.updated_at = datetime.now()
     db.commit()
     db.refresh(row)
+    clear_provider_cache()
     return ApiResponse(data=_to_out(row))

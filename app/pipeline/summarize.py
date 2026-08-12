@@ -12,8 +12,8 @@ from app.ai.cost import CostExceededError, check_quota, log_call
 from app.ai.errors import InvalidAIJsonError
 from app.ai.factory import with_provider_fallback
 from app.clients.hot_collector import HotItem
-from app.config import get_config
 from app.pipeline.classify import rule_classify
+from app.settings.runtime import get_runtime_config
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ def _fallback_result(item: HotItem, category: str | None = None) -> dict[str, An
 
 async def analyze_item(db: Session, item: HotItem) -> dict[str, Any]:
     """规则优先；未命中或需补充时走合并 Prompt AI。"""
-    cfg = get_config().pipeline
+    cfg = get_runtime_config().pipeline
     rule = rule_classify(item.title, item.source)
 
     need_ai = True

@@ -72,6 +72,90 @@ class AIConfigUpdate(BaseModel):
     priority: int | None = None
 
 
+class AIGlobalsOut(BaseModel):
+    prefer_local: bool = True
+    max_calls_per_day: int = 2000
+    max_tokens_per_day: int = 500000
+    timeout_sec: float = 120.0
+    default_provider: str = "lmstudio"
+
+
+class CollectorSettingsOut(BaseModel):
+    base_url: str
+    list_path: str
+    timeout_sec: int = 30
+    max_retries: int = 3
+
+
+class SchedulerSettingsOut(BaseModel):
+    daily_cron: str
+    timezone: str
+    enabled: bool = True
+
+
+class ClusterSettingsOut(BaseModel):
+    enabled: bool = True
+    method: str = "tfidf"
+    similarity_threshold: float = 0.72
+
+
+class ClassifySettingsOut(BaseModel):
+    rule_first: bool = True
+    ai_fallback: bool = True
+
+
+class CategoryPreferenceOut(BaseModel):
+    care: list[str] = Field(default_factory=list)
+    ignore: list[str] = Field(default_factory=list)
+    boost_max: int = 3
+    suppress_max: int = 3
+
+
+class PipelineSettingsOut(BaseModel):
+    cluster: ClusterSettingsOut = Field(default_factory=ClusterSettingsOut)
+    classify: ClassifySettingsOut = Field(default_factory=ClassifySettingsOut)
+    category_preference: CategoryPreferenceOut = Field(default_factory=CategoryPreferenceOut)
+    batch_size: int = 20
+    report_top_n: int = 30
+
+
+class SystemSettingsOut(BaseModel):
+    collector: CollectorSettingsOut
+    ai: AIGlobalsOut
+    scheduler: SchedulerSettingsOut
+    pipeline: PipelineSettingsOut
+
+
+class SystemSettingsUpdate(BaseModel):
+    collector: CollectorSettingsOut | None = None
+    ai: AIGlobalsOut | None = None
+    scheduler: SchedulerSettingsOut | None = None
+    pipeline: PipelineSettingsOut | None = None
+
+
+class ConnectionTestResult(BaseModel):
+    ok: bool
+    message: str
+    latency_ms: float | None = None
+    detail: dict[str, Any] | None = None
+
+
+class CollectorTestRequest(BaseModel):
+    base_url: str
+    list_path: str = "/api/hot/list"
+    timeout_sec: int = 30
+
+
+class AIProviderTestRequest(BaseModel):
+    id: int | None = None
+    name: str | None = None
+    provider: str = ""
+    api_url: str = ""
+    model: str = ""
+    api_key: str | None = None
+    timeout_sec: float | None = None
+
+
 class JobOut(BaseModel):
     id: int
     job_name: str

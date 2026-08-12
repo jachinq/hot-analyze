@@ -12,8 +12,8 @@ from sqlalchemy.orm import Session
 from tqdm import tqdm
 
 from app.clients.hot_collector import HotCollectorClient
-from app.config import get_config
 from app.db.models import DailyReport, HotAnalysis, JobRun
+from app.settings.runtime import get_runtime_config
 from app.ai.errors import InvalidAIJsonError
 from app.pipeline.cluster import _normalize_title, cluster_hots
 from app.pipeline.preference import effective_importance
@@ -294,7 +294,7 @@ async def run_daily_job(
         if show_progress:
             print(report_msg, flush=True)
 
-        cfg = get_config()
+        cfg = get_runtime_config()
         content = await generate_daily_report(
             db, report_date, analyses, top_n=cfg.pipeline.report_top_n
         )

@@ -10,7 +10,7 @@ from typing import Any
 
 import httpx
 
-from app.config import get_config
+from app.settings.runtime import get_runtime_config
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +56,7 @@ class HotCollectorClient:
         timeout_sec: float | None = None,
         max_retries: int | None = None,
     ) -> None:
-        cfg = get_config().collector
+        cfg = get_runtime_config().collector
         self.base_url = (base_url or cfg.base_url).rstrip("/")
         self.list_path = list_path or cfg.list_path
         self.timeout = timeout_sec if timeout_sec is not None else cfg.timeout_sec
