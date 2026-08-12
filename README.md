@@ -99,6 +99,19 @@ uv run python scripts/run_once.py --date 2026-08-11
 
 见 `TECH.md` §2。核心代码在 `app/`，前端在 `frontend/`。
 
+## Docker 部署（Debian）
+
+生产将前端打进同一镜像，经 Compose 运行。拓扑：`hot-collector` 在宿主机，本地大模型在局域网其他机器。
+
+详见 **[docs/DOCKER.md](docs/DOCKER.md)**。摘要：
+
+```bash
+cp .env.example .env          # 填写 ENCRYPT_KEY 等
+# 编辑 config.docker.yaml：把大模型 IP 改成局域网真实地址
+mkdir -p data && sudo chown -R 10001:10001 data
+docker compose build && docker compose up -d
+```
+
 ## 测试
 
 ```bash

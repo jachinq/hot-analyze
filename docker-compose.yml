@@ -1,0 +1,30 @@
+services:
+  hot-analyze:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: hot-analyze:latest
+    container_name: hot-analyze
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      TZ: Asia/Shanghai
+      DATABASE_URL: sqlite:////app/data/analyzer.db
+    volumes:
+      # SQLite 持久化（宿主机目录）
+      - ./data:/app/data
+      # 业务配置：collector → 宿主机；大模型 → 局域网 IP（请先编辑本文件）
+      - ./config.docker.yaml:/app/config.yaml:ro
+    extra_hosts:
+      # 让容器通过 host.docker.internal 访问宿主机上的 hot-collector
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s

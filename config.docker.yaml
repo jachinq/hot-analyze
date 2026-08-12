@@ -1,0 +1,76 @@
+# Docker / Debian 生产配置模板
+# - hot-collector：宿主机服务 → 经 host.docker.internal 访问
+# - 本地大模型：局域网其他机器 → 请改成真实 IP/端口
+#
+# 使用：编辑本文件中的 LLM 地址后，由 docker-compose 挂载为 /app/config.yaml
+
+collector:
+  base_url: "http://host.docker.internal:8080"
+  list_path: "/api/hot/list"
+  timeout_sec: 30
+  max_retries: 3
+
+scheduler:
+  daily_cron: "0 8 * * *"
+  timezone: "Asia/Shanghai"
+  enabled: true
+
+ai:
+  prefer_local: true
+  max_calls_per_day: 2000
+  max_tokens_per_day: 500000
+  timeout_sec: 120
+  default_provider: lmstudio
+  providers:
+    - name: lmstudio
+      provider: lmstudio
+      # TODO: 改成局域网大模型机器的实际地址，例如 http://192.168.1.50:1234/v1
+      api_url: "http://192.168.1.50:1234/v1"
+      model: "google/gemma-4-e2b"
+      enabled: true
+      priority: 10
+    - name: ollama
+      provider: ollama
+      # 若 Ollama 在局域网其他机器，同样改为该机 IP
+      api_url: "http://192.168.1.50:11434/v1"
+      model: "qwen2.5"
+      enabled: false
+      priority: 20
+    - name: deepseek
+      provider: openai
+      api_url: "https://api.deepseek.com/v1"
+      model: "deepseek-chat"
+      enabled: true
+      priority: 100
+
+pipeline:
+  cluster:
+    enabled: true
+    method: "tfidf"
+    similarity_threshold: 0.72
+  classify:
+    rule_first: true
+    ai_fallback: true
+  category_preference:
+    care:
+      - 社会
+      - 科技
+      - 财经
+    ignore:
+      - 娱乐
+      - 体育
+    boost_max: 3
+    suppress_max: 3
+  batch_size: 20
+  report_top_n: 30
+
+database:
+  # 容器内路径；也可由环境变量 DATABASE_URL 覆盖
+  url: "sqlite:////app/data/analyzer.db"
+
+security:
+  encrypt_api_key: true
+
+cors:
+  allow_origins:
+    - "*"

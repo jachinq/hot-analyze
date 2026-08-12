@@ -1,0 +1,40 @@
+# Git / IDE / OS
+.git
+.gitignore
+.idea
+.vscode
+.DS_Store
+Thumbs.db
+
+# Python 本地环境与缓存
+.venv
+**/__pycache__
+**/*.py[cod]
+**/*.egg-info
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.python-version
+
+# 测试与脚本（运行时不需要）
+tests
+scripts
+pytest.ini
+
+# 前端开发产物（镜像内重新构建）
+frontend/node_modules
+frontend/dist
+frontend/.vite
+
+# 本地数据与密钥（运行时挂载 / 注入）
+data
+*.db
+.env
+.env.*
+!.env.example
+
+# 文档与本地启动脚本
+*.md
+docs
+start.ps1
+start.cmd
