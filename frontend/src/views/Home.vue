@@ -116,10 +116,15 @@
       </div>
     </section>
 
+    <section class="panel" v-if="!loading && report?.content?.markdown">
+      <h2>AI 日报</h2>
+      <div class="markdown" v-html="markdownHtml"></div>
+    </section>
+
     <p v-if="error" class="error">{{ error }}</p>
     <p v-else-if="loading" class="muted">加载中…</p>
 
-    <section class="grid-2" v-if="stats && !loading">
+    <section class="grid" v-if="stats && !loading">
       <div class="panel">
         <h2>分类分布</h2>
         <div class="bars" v-if="stats.categories.length">
@@ -142,7 +147,7 @@
         <p v-else class="muted">暂无分类数据</p>
       </div>
 
-      <div class="panel">
+      <!-- <div class="panel">
         <h2>重要性排行</h2>
         <ol class="rank-list" v-if="ranking.length">
           <li v-for="(item, idx) in ranking.slice(0, 10)" :key="item.hot_id">
@@ -154,10 +159,10 @@
           </li>
         </ol>
         <p v-else class="muted">暂无排行</p>
-      </div>
+      </div> -->
     </section>
 
-    <section class="panel" v-if="!loading && report?.content?.highlights?.length">
+    <!-- <section class="panel" v-if="!loading && report?.content?.highlights?.length">
       <h2>重点摘要</h2>
       <ul class="highlight-list">
         <li v-for="(h, i) in report.content.highlights" :key="`${h.title}-${i}`">
@@ -175,17 +180,12 @@
       <ul class="trend-list">
         <li v-for="(t, i) in report.content.trends" :key="i">{{ t }}</li>
       </ul>
-    </section>
-
-    <section class="panel" v-if="!loading && report?.content?.markdown">
-      <h2>AI 日报</h2>
-      <div class="markdown" v-html="markdownHtml"></div>
-    </section>
+    </section> -->
 
     <section class="panel" v-if="!loading && report?.items?.length">
       <h2>热点列表</h2>
-      <div class="card-grid">
-        <HotCard v-for="item in report.items.slice(0, 24)" :key="item.hot_id" :item="item" />
+      <div class="card-list">
+        <HotCard v-for="(item, idx) in report.items" :key="item.hot_id" :item="item" :rank="idx + 1" />
       </div>
     </section>
   </div>

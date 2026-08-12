@@ -42,8 +42,21 @@ a:hover { text-decoration: underline; }
   color: var(--ink);
   letter-spacing: 0.02em;
 }
-.topbar nav { display: flex; gap: 1rem; }
+.topbar nav { display: flex; gap: 1rem; align-items: center; }
 .topbar a.router-link-active { color: var(--accent-2); font-weight: 600; }
+.topbar .collector-link {
+  padding: 0.25rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink);
+  font-size: 0.92rem;
+  background: rgba(255, 252, 246, 0.7);
+}
+.topbar .collector-link:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  text-decoration: none;
+}
 
 .main { max-width: 1100px; margin: 0 auto; padding: 1.5rem; }
 .page { display: flex; flex-direction: column; gap: 1.25rem; }
@@ -51,6 +64,7 @@ a:hover { text-decoration: underline; }
 .hero-panel {
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
   gap: 1.5rem;
   padding: 1.5rem;
   border-radius: var(--radius);
@@ -220,19 +234,26 @@ button.ghost {
   border-radius: 50%;
   background: var(--accent);
 }
-.stat-block { display: flex; gap: 1rem; }
+.stat-block {
+  display: flex;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  align-self: flex-start;
+}
 .stat {
-  min-width: 110px;
-  padding: 1rem;
+  min-width: 6.5rem;
+  padding: 0.85rem 1rem;
   border-radius: 14px;
   background: #12352f;
   color: #f4fff9;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  justify-content: center;
+  gap: 0.2rem;
+  height: fit-content;
 }
-.stat strong { font-size: 1.8rem; line-height: 1; }
-.stat span { opacity: 0.75; font-size: 0.85rem; }
+.stat strong { font-size: 1.65rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.stat span { opacity: 0.75; font-size: 0.8rem; }
 
 .panel {
   padding: 1.25rem;
@@ -283,6 +304,7 @@ button.ghost {
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1rem;
 }
+.card-list { display: flex; flex-direction: column; gap: 1rem; }
 .hot-card {
   padding: 1rem;
   border-radius: 16px;
