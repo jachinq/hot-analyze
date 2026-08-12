@@ -106,8 +106,12 @@
       </div>
       <div class="stat-block" aria-label="当日概览指标">
         <div class="stat">
+          <strong>{{ stats?.topic_count ?? stats?.hot_count ?? '—' }}</strong>
+          <span>话题数</span>
+        </div>
+        <div class="stat">
           <strong>{{ stats?.hot_count ?? '—' }}</strong>
-          <span>热点条数</span>
+          <span>原始热点</span>
         </div>
         <div class="stat">
           <strong>{{ stats?.categories?.length ?? 0 }}</strong>
@@ -189,11 +193,11 @@
     </section> -->
 
     <section class="panel" v-if="!loading && report?.items?.length">
-      <h2>热点列表</h2>
+      <h2>话题列表</h2>
       <div class="card-list">
         <HotCard
           v-for="(item, idx) in report.items"
-          :key="item.hot_id"
+          :key="item.cluster_id || item.hot_id"
           :item="item"
           :rank="idx + 1"
           :style="{ animationDelay: `${Math.min(idx, 12) * 0.04}s` }"
@@ -208,7 +212,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { marked } from 'marked'
-import { api, todayISO, type HotItem, type Report, type TodayStats } from '../api'
+import { api, todayISO, type HotItem, type Report, type TodayStats, type TopicItem } from '../api'
 import HotCard from '../components/HotCard.vue'
 
 const POLL_MS = 1200
@@ -240,7 +244,7 @@ const jobCurrent = ref(0)
 const jobTotal = ref(0)
 const stats = ref<TodayStats | null>(null)
 const report = ref<Report | null>(null)
-const ranking = ref<HotItem[]>([])
+const ranking = ref<TopicItem[]>([])
 
 let pollTimer: ReturnType<typeof setTimeout> | null = null
 let pollCount = 0
@@ -266,8 +270,24 @@ const markdownHtml = computed(() => {
 })
 
 /** 将「重点事件」里的标题匹配热点 URL，包成可点击链接 */
-function linkifyHighlightTitles(html: string, items: HotItem[]): string {
-  const linked = items.filter((i) => i.url && i.title?.trim())
+function linkifyHighlightTitles(html: string, topics: TopicItem[]): string {
+  const linked: HotItem[] = []
+  for (const t of topics) {
+    if (t.url && t.title?.trim()) linked.push(t)
+    for (const m of t.members || []) {
+      if (m.url && m.title?.trim()) {
+        linked.push({
+          hot_id: m.hot_id,
+          title: m.title,
+          importance: t.importance,
+          tags: [],
+          heat: m.heat,
+          url: m.url,
+          source: m.source,
+        })
+      }
+    }
+  }
   if (!html || !linked.length) return html
 
   const byNorm = new Map<string, string>()

@@ -5,30 +5,18 @@ from __future__ import annotations
 from datetime import date as date_cls
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import desc, func, select
+from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
 from app.db.models import DailyReport, HotAnalysis, JobRun
-from app.pipeline.daily_job import _row_to_dict
-from app.pipeline.preference import effective_importance
-from app.schemas import ApiResponse, CategoryStat, HotItemOut, TodayStats
+from app.pipeline.topics import rows_to_topics
+from app.schemas import ApiResponse, CategoryStat, TodayStats, TopicItemOut
 
 router = APIRouter(prefix="/api", tags=["hot"])
 
 
-def _sort_items_by_importance(rows: list[HotAnalysis]) -> list[HotAnalysis]:
-    return sorted(
-        rows,
-        key=lambda r: (
-            effective_importance(r.importance, r.category),
-            int(r.heat or 0),
-        ),
-        reverse=True,
-    )
-
-
-@router.get("/hot/category", response_model=ApiResponse[list[HotItemOut]])
+@router.get("/hot/category", response_model=ApiResponse[list[TopicItemOut]])
 def hot_by_category(
     category: str = Query(...),
     report_date: date_cls | None = Query(None, alias="date"),
@@ -42,11 +30,10 @@ def hot_by_category(
             )
         ).all()
     )
-    rows = _sort_items_by_importance(rows)
-    return ApiResponse(data=[HotItemOut(**_row_to_dict(r)) for r in rows])
+    return ApiResponse(data=rows_to_topics(rows, by="importance"))
 
 
-@router.get("/hot/search", response_model=ApiResponse[list[HotItemOut]])
+@router.get("/hot/search", response_model=ApiResponse[list[TopicItemOut]])
 def hot_search(
     report_date: date_cls | None = Query(None, alias="date"),
     category: str | None = Query(None),
@@ -66,20 +53,36 @@ def hot_search(
             | (HotAnalysis.summary.like(like))
             | (HotAnalysis.tags.like(like))
         )
-    rows = list(db.scalars(q).all())
-    rows = sorted(
-        rows,
-        key=lambda r: (
-            r.report_date or date_cls.min,
-            effective_importance(r.importance, r.category),
-            int(r.heat or 0),
-        ),
-        reverse=True,
-    )[:limit]
-    return ApiResponse(data=[HotItemOut(**_row_to_dict(r)) for r in rows])
+    matched = list(db.scalars(q).all())
+    if not matched:
+        return ApiResponse(data=[])
+
+    # 关键词命中任一成员 → 拉回同日同簇全部成员再聚合成话题
+    if report_date:
+        day_rows = list(
+            db.scalars(
+                select(HotAnalysis).where(HotAnalysis.report_date == report_date)
+            ).all()
+        )
+    else:
+        dates = {r.report_date for r in matched}
+        day_rows = list(
+            db.scalars(select(HotAnalysis).where(HotAnalysis.report_date.in_(dates))).all()
+        )
+
+    topics = rows_to_topics(day_rows, by="importance")
+    hit_ids = {int(r.hot_id) for r in matched}
+    filtered = [
+        t
+        for t in topics
+        if t.hot_id in hit_ids or any(m.hot_id in hit_ids for m in t.members)
+    ]
+    if category:
+        filtered = [t for t in filtered if (t.category or "") == category]
+    return ApiResponse(data=filtered[:limit])
 
 
-@router.get("/hot/ranking", response_model=ApiResponse[list[HotItemOut]])
+@router.get("/hot/ranking", response_model=ApiResponse[list[TopicItemOut]])
 def hot_ranking(
     report_date: date_cls | None = Query(None, alias="date"),
     by: str = Query("importance", pattern="^(importance|heat)$"),
@@ -90,12 +93,7 @@ def hot_ranking(
     rows = list(
         db.scalars(select(HotAnalysis).where(HotAnalysis.report_date == d)).all()
     )
-    if by == "heat":
-        rows = sorted(rows, key=lambda r: (int(r.heat or 0), effective_importance(r.importance, r.category)), reverse=True)
-    else:
-        rows = _sort_items_by_importance(rows)
-    rows = rows[:limit]
-    return ApiResponse(data=[HotItemOut(**_row_to_dict(r)) for r in rows])
+    return ApiResponse(data=rows_to_topics(rows, by=by, limit=limit))
 
 
 @router.get("/stats/today", response_model=ApiResponse[TodayStats])
@@ -104,18 +102,16 @@ def stats_today(
     db: Session = Depends(get_db),
 ):
     d = report_date or date_cls.today()
-    hot_count = (
-        db.scalar(
-            select(func.count()).select_from(HotAnalysis).where(HotAnalysis.report_date == d)
-        )
-        or 0
+    rows = list(
+        db.scalars(select(HotAnalysis).where(HotAnalysis.report_date == d)).all()
     )
-    cat_rows = db.execute(
-        select(HotAnalysis.category, func.count())
-        .where(HotAnalysis.report_date == d)
-        .group_by(HotAnalysis.category)
-    ).all()
-    categories = [CategoryStat(category=c or "其他", count=int(n)) for c, n in cat_rows]
+    hot_count = len(rows)
+    topics = rows_to_topics(rows, by="importance")
+    cat_map: dict[str, int] = {}
+    for t in topics:
+        c = t.category or "其他"
+        cat_map[c] = cat_map.get(c, 0) + 1
+    categories = [CategoryStat(category=c, count=n) for c, n in cat_map.items()]
     categories.sort(key=lambda x: -x.count)
     report = db.scalar(select(DailyReport).where(DailyReport.report_date == d))
     job = db.scalar(
@@ -127,7 +123,8 @@ def stats_today(
     return ApiResponse(
         data=TodayStats(
             date=d,
-            hot_count=int(hot_count),
+            hot_count=hot_count,
+            topic_count=len(topics),
             categories=categories,
             has_report=report is not None,
             report_summary=report.summary if report else None,

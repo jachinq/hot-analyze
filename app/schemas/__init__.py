@@ -30,12 +30,29 @@ class HotItemOut(BaseModel):
     cluster_id: str | None = None
 
 
+class TopicMemberOut(BaseModel):
+    hot_id: int
+    title: str
+    source: str | None = None
+    heat: int = 0
+    url: str | None = None
+
+
+class TopicItemOut(HotItemOut):
+    """话题卡：代表条字段 + 可展开成员。heat 为成员 max(heat)。"""
+
+    member_count: int = 1
+    sources: list[str] = Field(default_factory=list)
+    members: list[TopicMemberOut] = Field(default_factory=list)
+
+
 class ReportOut(BaseModel):
     date: date
     summary: str | None = None
     hot_count: int = 0
+    topic_count: int = 0
     content: dict[str, Any] | None = None
-    items: list[HotItemOut] = Field(default_factory=list)
+    items: list[TopicItemOut] = Field(default_factory=list)
 
 
 class CategoryStat(BaseModel):
@@ -46,6 +63,7 @@ class CategoryStat(BaseModel):
 class TodayStats(BaseModel):
     date: date
     hot_count: int = 0
+    topic_count: int = 0
     categories: list[CategoryStat] = Field(default_factory=list)
     has_report: bool = False
     report_summary: str | None = None
@@ -96,7 +114,7 @@ class SchedulerSettingsOut(BaseModel):
 class ClusterSettingsOut(BaseModel):
     enabled: bool = True
     method: str = "tfidf"
-    similarity_threshold: float = 0.72
+    similarity_threshold: float = 0.40
 
 
 class ClassifySettingsOut(BaseModel):

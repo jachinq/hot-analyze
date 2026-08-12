@@ -4,7 +4,7 @@
       <div class="hero-copy">
         <p class="eyebrow">分类浏览</p>
         <h1>{{ name }}</h1>
-        <p class="lead">{{ date }} · 共 {{ items.length }} 条</p>
+        <p class="lead">{{ date }} · 共 {{ items.length }} 个话题</p>
       </div>
       <div class="filters">
         <input type="date" v-model="date" :max="today" @change="onDateChange" />
@@ -16,7 +16,7 @@
     <p v-if="loading" class="muted">加载中…</p>
 
     <div class="card-grid" v-if="items.length">
-      <HotCard v-for="item in items" :key="item.hot_id" :item="item" />
+      <HotCard v-for="item in items" :key="item.cluster_id || item.hot_id" :item="item" />
     </div>
     <p v-else-if="!loading" class="muted">该分类暂无热点</p>
   </div>
@@ -25,7 +25,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { api, todayISO, type HotItem } from '../api'
+import { api, todayISO, type TopicItem } from '../api'
 import HotCard from '../components/HotCard.vue'
 
 const props = defineProps<{ name: string }>()
@@ -42,7 +42,7 @@ function normalizeDate(value: unknown): string | null {
 }
 
 const date = ref(normalizeDate(route.query.date) || today)
-const items = ref<HotItem[]>([])
+const items = ref<TopicItem[]>([])
 const loading = ref(false)
 const error = ref('')
 

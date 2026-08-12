@@ -30,7 +30,7 @@
     <p v-if="loading" class="muted">搜索中…</p>
 
     <div class="card-grid" v-if="items.length">
-      <HotCard v-for="item in items" :key="`${item.hot_id}-${item.title}`" :item="item" />
+      <HotCard v-for="item in items" :key="item.cluster_id || `${item.hot_id}-${item.title}`" :item="item" />
     </div>
     <p v-else-if="searched && !loading" class="muted">无匹配结果</p>
   </div>
@@ -38,7 +38,7 @@
 
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
-import { api, todayISO, type HotItem } from '../api'
+import { api, todayISO, type TopicItem } from '../api'
 import HotCard from '../components/HotCard.vue'
 
 const categories = ['科技', '财经', '新闻', '社会', '娱乐', '体育', '军事', '其他']
@@ -47,7 +47,7 @@ const form = reactive({
   category: '',
   keyword: '',
 })
-const items = ref<HotItem[]>([])
+const items = ref<TopicItem[]>([])
 const loading = ref(false)
 const searched = ref(false)
 const error = ref('')

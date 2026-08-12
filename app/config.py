@@ -51,7 +51,7 @@ class AIConfig(BaseModel):
 class ClusterConfig(BaseModel):
     enabled: bool = True
     method: str = "tfidf"
-    similarity_threshold: float = 0.72
+    similarity_threshold: float = 0.40
 
 
 class ClassifyConfig(BaseModel):

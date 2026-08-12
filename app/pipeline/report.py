@@ -66,8 +66,21 @@ async def generate_daily_report(
         }
         return empty
 
+    # 按话题去重：同 cluster 只保留热度最高的一条进入日报 Top
+    best_by_cluster: dict[str, dict[str, Any]] = {}
+    solo: list[dict[str, Any]] = []
+    for a in analyses:
+        cid = (a.get("cluster_id") or "").strip()
+        if not cid:
+            solo.append(a)
+            continue
+        prev = best_by_cluster.get(cid)
+        if prev is None or int(a.get("heat") or 0) > int(prev.get("heat") or 0):
+            best_by_cluster[cid] = a
+    deduped = list(best_by_cluster.values()) + solo
+
     ranked = sorted(
-        analyses,
+        deduped,
         key=lambda x: (
             effective_importance(x.get("importance", 0), x.get("category"))
             * max(x.get("heat", 0), 1)

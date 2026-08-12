@@ -3,7 +3,7 @@
     <div class="hot-card__meta">
       <span v-if="rank != null" class="hot-card__rank">#{{ rank }}</span>
       <span class="badge">{{ item.category || '其他' }}</span>
-      <span class="source">{{ item.source || '未知来源' }}</span>
+      <span class="source">{{ sourceLabel }}</span>
       <span class="heat">热度 {{ formatHeat(item.heat) }}</span>
     </div>
     <h3 class="hot-card__title">
@@ -19,16 +19,57 @@
         <span v-for="t in item.tags.slice(0, 4)" :key="t" class="tag">{{ t }}</span>
       </div>
     </div>
+
+    <div v-if="memberCount > 1" class="hot-card__members">
+      <button
+        type="button"
+        class="hot-card__toggle"
+        :aria-expanded="expanded"
+        @click="expanded = !expanded"
+      >
+        <span class="hot-card__toggle-icon" :class="{ open: expanded }" aria-hidden="true">▸</span>
+        同话题 {{ memberCount }} 条
+      </button>
+      <ul v-if="expanded" class="hot-card__member-list">
+        <li v-for="m in item.members" :key="m.hot_id" class="hot-card__member">
+          <a
+            v-if="m.url"
+            :href="m.url"
+            target="_blank"
+            rel="noopener"
+            class="hot-card__member-title"
+          >{{ m.title }}</a>
+          <span v-else class="hot-card__member-title">{{ m.title }}</span>
+          <span class="hot-card__member-meta">
+            <span>{{ m.source || '未知' }}</span>
+            <span>{{ formatHeat(m.heat) }}</span>
+          </span>
+        </li>
+      </ul>
+    </div>
   </article>
 </template>
 
 <script setup lang="ts">
-import type { HotItem } from '../api'
+import { computed, ref } from 'vue'
+import type { TopicItem } from '../api'
 
-withDefaults(
-  defineProps<{ item: HotItem; rank?: number | null }>(),
+const props = withDefaults(
+  defineProps<{ item: TopicItem; rank?: number | null }>(),
   { rank: null },
 )
+
+const expanded = ref(false)
+
+const memberCount = computed(
+  () => props.item.member_count ?? props.item.members?.length ?? 1,
+)
+
+const sourceLabel = computed(() => {
+  const sources = props.item.sources?.filter(Boolean) || []
+  if (sources.length > 1) return `${sources[0]} 等${sources.length}源`
+  return props.item.source || sources[0] || '未知来源'
+})
 
 function formatHeat(n: number) {
   if (n >= 10000) return `${(n / 10000).toFixed(1)}万`

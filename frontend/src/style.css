@@ -623,6 +623,74 @@ button.ghost:hover { background: var(--accent-soft); filter: none; }
   gap: 0.45rem 0.75rem;
   margin-top: 0.15rem;
 }
+.hot-card__members {
+  margin-top: 0.15rem;
+  padding-top: 0.55rem;
+  border-top: 1px dashed rgba(15, 40, 55, 0.12);
+}
+.hot-card__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-deep);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.hot-card__toggle:hover {
+  color: var(--accent);
+}
+.hot-card__toggle-icon {
+  display: inline-block;
+  transition: transform 0.2s var(--ease-out);
+  font-size: 0.75rem;
+}
+.hot-card__toggle-icon.open {
+  transform: rotate(90deg);
+}
+.hot-card__member-list {
+  list-style: none;
+  margin: 0.55rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+  animation: rise-in 0.28s var(--ease-out) both;
+}
+.hot-card__member {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 0.75rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 8px;
+  background: rgba(11, 127, 155, 0.05);
+}
+.hot-card__member-title {
+  flex: 1 1 12rem;
+  color: inherit;
+  text-decoration: none;
+  font-size: 0.88rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+a.hot-card__member-title:hover {
+  color: var(--accent-deep);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.hot-card__member-meta {
+  display: inline-flex;
+  gap: 0.55rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
 .stars {
   letter-spacing: -1px;
   color: #c5d0d8;

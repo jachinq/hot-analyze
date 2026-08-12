@@ -43,7 +43,7 @@ pipeline:
   cluster:
     enabled: true
     method: "tfidf"           # tfidf | title_sim（规则回退整理时使用）
-    similarity_threshold: 0.72
+    similarity_threshold: 0.40
   classify:
     rule_first: true
     ai_fallback: true

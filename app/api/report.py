@@ -11,9 +11,8 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
 from app.db.models import DailyReport, HotAnalysis
-from app.pipeline.daily_job import _row_to_dict
-from app.pipeline.preference import effective_importance
-from app.schemas import ApiResponse, HotItemOut, ReportOut
+from app.pipeline.topics import rows_to_topics
+from app.schemas import ApiResponse, ReportOut
 
 router = APIRouter(prefix="/api/report", tags=["report"])
 
@@ -30,21 +29,14 @@ def _build_report(db: Session, report: DailyReport) -> ReportOut:
             select(HotAnalysis).where(HotAnalysis.report_date == report.report_date)
         ).all()
     )
-    rows = sorted(
-        rows,
-        key=lambda r: (
-            effective_importance(r.importance, r.category),
-            int(r.heat or 0),
-        ),
-        reverse=True,
-    )
-    items = [HotItemOut(**_row_to_dict(r)) for r in rows]
+    topics = rows_to_topics(rows, by="importance")
     return ReportOut(
         date=report.report_date,
         summary=report.summary,
-        hot_count=report.hot_count or len(items),
+        hot_count=report.hot_count or len(rows),
+        topic_count=len(topics),
         content=content,
-        items=items,
+        items=topics,
     )
 
 

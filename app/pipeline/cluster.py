@@ -48,7 +48,7 @@ def _title_sim_clusters(items: list[HotItem], threshold: float) -> list[Cluster]
                 placed = True
                 break
         if not placed:
-            cid = hashlib.md5(item.title.encode("utf-8")).hexdigest()[:12]
+            cid = _stable_id_from_members([item])
             clusters.append(Cluster(cluster_id=cid, items=[item], representative=item))
     return clusters
 
@@ -98,9 +98,16 @@ def _tfidf_clusters(items: list[HotItem], threshold: float) -> list[Cluster]:
     for idxs in groups.values():
         members = [items[i] for i in idxs]
         rep = max(members, key=lambda x: x.heat)
-        cid = hashlib.md5(rep.title.encode("utf-8")).hexdigest()[:12]
+        cid = _stable_id_from_members(members)
         clusters.append(Cluster(cluster_id=cid, items=members, representative=rep))
     return clusters
+
+
+def _stable_id_from_members(members: list[HotItem]) -> str:
+    """按成员 hot_id 生成稳定簇 ID，避免代表标题变化导致 ID 漂移。"""
+    ids = sorted(int(m.id) for m in members)
+    raw = ",".join(str(i) for i in ids)
+    return hashlib.md5(raw.encode("utf-8")).hexdigest()[:12]
 
 
 def cluster_hots(items: list[HotItem]) -> list[Cluster]:
@@ -108,7 +115,7 @@ def cluster_hots(items: list[HotItem]) -> list[Cluster]:
     if not cfg.enabled or not items:
         return [
             Cluster(
-                cluster_id=hashlib.md5(it.title.encode("utf-8")).hexdigest()[:12],
+                cluster_id=_stable_id_from_members([it]),
                 items=[it],
                 representative=it,
             )

@@ -18,6 +18,21 @@ export interface HotItem {
   cluster_id?: string | null
 }
 
+export interface TopicMember {
+  hot_id: number
+  title: string
+  source?: string | null
+  heat: number
+  url?: string | null
+}
+
+/** 话题卡：代表条 + 可展开成员；heat 为成员 max(heat) */
+export interface TopicItem extends HotItem {
+  member_count: number
+  sources: string[]
+  members: TopicMember[]
+}
+
 export interface ReportContent {
   highlights?: Array<{ title?: string; impact?: number; summary?: string; url?: string }>
   trends?: string[]
@@ -28,8 +43,9 @@ export interface Report {
   date: string
   summary?: string | null
   hot_count: number
+  topic_count?: number
   content?: ReportContent | null
-  items: HotItem[]
+  items: TopicItem[]
 }
 
 export interface CategoryStat {
@@ -40,6 +56,7 @@ export interface CategoryStat {
 export interface TodayStats {
   date: string
   hot_count: number
+  topic_count?: number
   categories: CategoryStat[]
   has_report: boolean
   report_summary?: string | null
@@ -177,11 +194,11 @@ export const api = {
   report: (date: string) => request<Report>(`/api/report/${date}`),
   latestReport: () => request<Report>('/api/report/latest'),
   ranking: (date?: string, by: 'importance' | 'heat' = 'importance') =>
-    request<HotItem[]>(
+    request<TopicItem[]>(
       `/api/hot/ranking?by=${by}${date ? `&date=${date}` : ''}`,
     ),
   byCategory: (category: string, date?: string) =>
-    request<HotItem[]>(
+    request<TopicItem[]>(
       `/api/hot/category?category=${encodeURIComponent(category)}${date ? `&date=${date}` : ''}`,
     ),
   search: (params: { date?: string; category?: string; keyword?: string }) => {
@@ -189,7 +206,7 @@ export const api = {
     if (params.date) q.set('date', params.date)
     if (params.category) q.set('category', params.category)
     if (params.keyword) q.set('keyword', params.keyword)
-    return request<HotItem[]>(`/api/hot/search?${q.toString()}`)
+    return request<TopicItem[]>(`/api/hot/search?${q.toString()}`)
   },
   /** 手动触发分析；force=false 时跳过已有 AI 结果 */
   triggerAnalyze: (date: string, force = false) => {
