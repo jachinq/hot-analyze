@@ -1,6 +1,6 @@
 """规则分类与聚类单测。"""
 
-from app.pipeline.classify import rule_classify
+from app.pipeline.classify import normalize_category, rule_classify
 from app.pipeline.cluster import cluster_hots
 from app.clients.hot_collector import HotItem
 
@@ -20,6 +20,23 @@ def test_rule_classify_miss():
     r = rule_classify("今天天气不错", "")
     assert r.category == "其他"
     assert not r.hit
+
+
+def test_normalize_category_valid():
+    assert normalize_category("科技") == "科技"
+    assert normalize_category(" 财经 ") == "财经"
+
+
+def test_normalize_category_rejects_options_dump():
+    dumped = "新闻/科技/财经/社会/娱乐/体育/军事/其他"
+    assert normalize_category(dumped, fallback="社会") == "社会"
+    assert normalize_category(dumped) == "其他"
+
+
+def test_normalize_category_rejects_unknown():
+    assert normalize_category("八卦", fallback="娱乐") == "娱乐"
+    assert normalize_category("") == "其他"
+    assert normalize_category(None, fallback="新闻") == "新闻"
 
 
 def test_cluster_similar_titles():

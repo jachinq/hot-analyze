@@ -34,6 +34,7 @@ class HotAnalysis(Base):
     title: Mapped[str] = mapped_column(Text, nullable=False)
     source: Mapped[str | None] = mapped_column(String(128))
     heat: Mapped[int] = mapped_column(Integer, default=0)
+    rank: Mapped[int | None] = mapped_column(Integer)  # 采集榜内名次，越小越热
     url: Mapped[str | None] = mapped_column(Text)
     category: Mapped[str | None] = mapped_column(String(64))
     sub_category: Mapped[str | None] = mapped_column(String(64))

@@ -578,6 +578,10 @@ button.ghost:hover { background: var(--accent-soft); filter: none; }
   color: var(--accent-deep);
   min-width: 1.4rem;
 }
+.hot-card__stat {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
 .badge {
   background: var(--accent-soft);
   color: var(--accent-deep);

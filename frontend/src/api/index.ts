@@ -10,10 +10,17 @@ export interface HotItem {
   category?: string | null
   sub_category?: string | null
   summary?: string | null
+  /** 有效重要性 = 原始 + 分类加减分 */
   importance: number
+  /** AI/规则原始分数 */
+  raw_importance?: number
+  /** 分类偏好加减分 */
+  category_boost?: number
   tags: string[]
   source?: string | null
   heat: number
+  /** 采集榜内名次，越小越热 */
+  rank?: number | null
   url?: string | null
   cluster_id?: string | null
 }
@@ -23,6 +30,7 @@ export interface TopicMember {
   title: string
   source?: string | null
   heat: number
+  rank?: number | null
   url?: string | null
 }
 

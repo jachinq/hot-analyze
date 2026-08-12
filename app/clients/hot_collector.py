@@ -21,9 +21,21 @@ class HotItem:
     title: str
     source: str = ""
     heat: int = 0
+    rank: int | None = None  # 榜内名次，越小越热
     url: str | None = None
     collected_at: str | None = None
     raw: dict[str, Any] | None = None
+
+
+def _parse_rank(raw: dict[str, Any]) -> int | None:
+    v = raw.get("rank")
+    if v is None:
+        return None
+    try:
+        n = int(v)
+    except (TypeError, ValueError):
+        return None
+    return n if n > 0 else None
 
 
 def _adapt_item(raw: dict[str, Any]) -> HotItem | None:
@@ -42,8 +54,9 @@ def _adapt_item(raw: dict[str, Any]) -> HotItem | None:
         title=str(title).strip(),
         source=str(raw.get("source") or raw.get("platform") or ""),
         heat=heat_i,
+        rank=_parse_rank(raw),
         url=raw.get("url") or raw.get("link"),
-        collected_at=raw.get("collected_at") or raw.get("time"),
+        collected_at=raw.get("collected_at") or raw.get("time") or raw.get("collect_time"),
         raw=raw,
     )
 

@@ -2,7 +2,7 @@
 
 from app.config import CategoryPreferenceConfig, get_config, reload_config
 from app.pipeline import preference
-from app.pipeline.preference import category_delta, effective_importance
+from app.pipeline.preference import category_delta, effective_importance, is_ignored_category
 
 
 def setup_function():
@@ -28,6 +28,18 @@ def test_delta_order_decreasing():
     assert category_delta("娱乐", pref) == -3
     assert category_delta("体育", pref) == -2
     assert category_delta("社会", pref) == -1
+
+
+def test_is_ignored_category():
+    pref = CategoryPreferenceConfig(care=["科技"], ignore=["娱乐", "体育"])
+    assert is_ignored_category("娱乐", pref) is True
+    assert is_ignored_category("体育", pref) is True
+    assert is_ignored_category("科技", pref) is False
+    assert is_ignored_category("军事", pref) is False
+    assert is_ignored_category(None, pref) is False
+    # care 优先
+    both = CategoryPreferenceConfig(care=["娱乐"], ignore=["娱乐"])
+    assert is_ignored_category("娱乐", both) is False
 
 
 def test_delta_unlisted_is_zero():

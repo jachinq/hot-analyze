@@ -4,7 +4,18 @@
       <span v-if="rank != null" class="hot-card__rank">#{{ rank }}</span>
       <span class="badge">{{ item.category || '其他' }}</span>
       <span class="source">{{ sourceLabel }}</span>
-      <span class="heat">热度 {{ formatHeat(item.heat) }}</span>
+      <span class="hot-card__stat heat">热度 {{ formatHeat(item.heat) }}</span>
+      <span class="hot-card__stat" title="AI/规则原始分数">原始 {{ item.raw_importance ?? item.importance }}</span>
+      <span
+        v-if="item.rank != null"
+        class="hot-card__stat"
+        title="采集榜内名次，越小越热"
+      >排名 {{ item.rank }}</span>
+      <span
+        v-if="(item.category_boost ?? 0) !== 0"
+        class="hot-card__stat"
+        title="分类偏好加减分（关心+/忽略-）；忽略类话题整体靠后"
+      >分类 {{ formatBoost(item.category_boost) }}</span>
     </div>
     <h3 class="hot-card__title">
       <a v-if="item.url" :href="item.url" target="_blank" rel="noopener">{{ item.title }}</a>
@@ -12,7 +23,11 @@
     </h3>
     <p class="hot-card__summary">{{ item.summary || '暂无摘要' }}</p>
     <div class="hot-card__foot">
-      <div class="stars" :title="`重要性 ${item.importance}/10`" :aria-label="`重要性 ${item.importance} 分`">
+      <div
+        class="stars"
+        :title="`有效重要性 ${item.importance}/10（原始 ${item.raw_importance ?? '—'} + 分类 ${formatBoost(item.category_boost)}）`"
+        :aria-label="`有效重要性 ${item.importance} 分`"
+      >
         <span v-for="i in 10" :key="i" :class="{ on: i <= item.importance }">★</span>
       </div>
       <div class="tags" v-if="item.tags?.length">
@@ -43,6 +58,7 @@
           <span class="hot-card__member-meta">
             <span>{{ m.source || '未知' }}</span>
             <span>{{ formatHeat(m.heat) }}</span>
+            <span v-if="m.rank != null">排名 {{ m.rank }}</span>
           </span>
         </li>
       </ul>
@@ -74,5 +90,11 @@ const sourceLabel = computed(() => {
 function formatHeat(n: number) {
   if (n >= 10000) return `${(n / 10000).toFixed(1)}万`
   return String(n ?? 0)
+}
+
+function formatBoost(n?: number | null) {
+  const v = n ?? 0
+  if (v > 0) return `+${v}`
+  return String(v)
 }
 </script>

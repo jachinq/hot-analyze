@@ -12,7 +12,7 @@ from app.ai.cost import CostExceededError, check_quota, log_call
 from app.ai.errors import InvalidAIJsonError
 from app.ai.factory import with_provider_fallback
 from app.clients.hot_collector import HotItem
-from app.pipeline.classify import rule_classify
+from app.pipeline.classify import normalize_category, rule_classify
 from app.settings.runtime import get_runtime_config
 
 logger = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ def _clamp_importance(v: Any) -> int:
 
 def _fallback_result(item: HotItem, category: str | None = None) -> dict[str, Any]:
     rule = rule_classify(item.title, item.source)
-    cat = category or rule.category
+    cat = normalize_category(category or rule.category, fallback=rule.category)
     summary = item.title[:80]
     return {
         "title": item.title,
@@ -85,13 +85,22 @@ async def analyze_item(db: Session, item: HotItem) -> dict[str, Any]:
             completion_tokens=int(usage.get("completion_tokens", 0)),
             success=True,
         )
-        category = data.get("category") or (rule.category if rule.hit else "其他")
+        fallback_cat = rule.category if rule.hit else "其他"
+        raw_category = data.get("category")
+        category = normalize_category(raw_category, fallback=fallback_cat)
+        if str(raw_category or "").strip() != category:
+            logger.warning(
+                "AI category normalized hot_id=%s raw=%r -> %r",
+                item.id,
+                raw_category,
+                category,
+            )
         tags = data.get("tags") or []
         if not isinstance(tags, list):
             tags = [str(tags)]
         return {
             "title": data.get("title") or item.title,
-            "category": str(category),
+            "category": category,
             "sub_category": data.get("sub_category"),
             "summary": str(data.get("summary") or item.title)[:200],
             "importance": _clamp_importance(data.get("importance")),

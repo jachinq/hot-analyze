@@ -43,6 +43,22 @@ def category_delta(category: str | None, pref: CategoryPreferenceConfig | None =
     return 0
 
 
+def is_ignored_category(
+    category: str | None,
+    pref: CategoryPreferenceConfig | None = None,
+) -> bool:
+    """是否属于「不关心」分类；与 care 冲突时 care 优先（不算不关心）。"""
+    cfg = pref or _pref()
+    name = (category or "").strip()
+    if not name:
+        return False
+    care = list(cfg.care or [])
+    ignore = list(cfg.ignore or [])
+    if name in care:
+        return False
+    return name in ignore
+
+
 def effective_importance(
     raw: Any,
     category: str | None,

@@ -21,6 +21,7 @@ def init_db() -> None:
     engine = get_engine()
     models.Base.metadata.create_all(bind=engine)
     _ensure_job_run_progress_columns(engine)
+    _ensure_hot_analysis_rank_column(engine)
     SessionLocal = get_session_factory()
     with SessionLocal() as db:
         seed_ai_config_from_yaml(db)
@@ -53,6 +54,19 @@ def _ensure_job_run_progress_columns(engine) -> None:
         for sql in alters:
             conn.execute(text(sql))
     logger.info("job_run progress columns ensured: %s", len(alters))
+
+
+def _ensure_hot_analysis_rank_column(engine) -> None:
+    """为已有 hot_analysis 表补齐采集榜内名次字段。"""
+    insp = inspect(engine)
+    if "hot_analysis" not in insp.get_table_names():
+        return
+    existing = {c["name"] for c in insp.get_columns("hot_analysis")}
+    if "rank" in existing:
+        return
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE hot_analysis ADD COLUMN rank INTEGER"))
+    logger.info("hot_analysis rank column ensured")
 
 
 def seed_ai_config_from_yaml(db: Session) -> None:

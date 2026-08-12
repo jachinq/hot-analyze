@@ -22,10 +22,13 @@ class HotItemOut(BaseModel):
     category: str | None = None
     sub_category: str | None = None
     summary: str | None = None
-    importance: int = 0
+    importance: int = 0  # 有效重要性 = 原始 + 分类加减分
+    raw_importance: int = 0  # AI/规则原始分数
+    category_boost: int = 0  # 分类偏好加减分
     tags: list[str] = Field(default_factory=list)
     source: str | None = None
     heat: int = 0
+    rank: int | None = None  # 采集榜内名次，越小越热
     url: str | None = None
     cluster_id: str | None = None
 
@@ -35,11 +38,12 @@ class TopicMemberOut(BaseModel):
     title: str
     source: str | None = None
     heat: int = 0
+    rank: int | None = None
     url: str | None = None
 
 
 class TopicItemOut(HotItemOut):
-    """话题卡：代表条字段 + 可展开成员。heat 为成员 max(heat)。"""
+    """话题卡：代表条字段 + 可展开成员。heat=max(heat)，rank=min(rank)。"""
 
     member_count: int = 1
     sources: list[str] = Field(default_factory=list)

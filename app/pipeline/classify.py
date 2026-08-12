@@ -32,6 +32,43 @@ def reload_categories() -> list[dict[str, Any]]:
     return load_categories()
 
 
+def allowed_categories() -> frozenset[str]:
+    names = [str(c.get("name") or "").strip() for c in load_categories()]
+    return frozenset(n for n in names if n) | frozenset({"其他"})
+
+
+def category_options_text() -> str:
+    """Prompt 用：与 rules 顺序一致的可选分类文案。"""
+    names = [str(c.get("name") or "").strip() for c in load_categories()]
+    ordered = [n for n in names if n]
+    if "其他" not in ordered:
+        ordered.append("其他")
+    return "/".join(ordered)
+
+
+def normalize_category(raw: Any, fallback: str = "其他") -> str:
+    """将 AI/规则输出规范为白名单内的单个分类。
+
+    常见非法值：整段「新闻/科技/...」、含斜杠、空白、未知词。
+    """
+    allowed = allowed_categories()
+    fb = (fallback or "").strip()
+    if fb not in allowed:
+        fb = "其他"
+
+    if raw is None:
+        return fb
+    name = str(raw).strip()
+    if not name:
+        return fb
+    # 模型把「可选分类」整串抄回，或一次返回多个
+    if "/" in name or "\\" in name or "|" in name or "、" in name:
+        return fb
+    if name in allowed:
+        return name
+    return fb
+
+
 def rule_classify(title: str, source: str = "") -> RuleResult:
     """标题命中权重 > 来源权重；同分取列表顺序；均未命中 → 其他。"""
     categories = load_categories()

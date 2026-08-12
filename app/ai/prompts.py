@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from app.pipeline.classify import category_options_text
+
+# 兼容旧引用；运行时以 rules/categories.yaml 为准
 CATEGORY_OPTIONS = "新闻/科技/财经/社会/娱乐/体育/军事/其他"
 
 ANALYZE_SYSTEM = (
@@ -11,12 +14,12 @@ ANALYZE_SYSTEM = (
 ANALYZE_USER_TMPL = """标题: {title}
 来源: {source}
 讨论热度: {heat}
-可选分类: {categories}
+可选分类（只能选其中一个词，禁止原样返回整串）: {categories}
 
 请输出:
 {{
   "title": "...",
-  "category": "...",
+  "category": "必须是可选分类中的单个词，例如科技",
   "sub_category": "...",
   "summary": "一句话摘要，不超过80字",
   "importance": 1-10,
@@ -52,7 +55,7 @@ def build_analyze_user(title: str, source: str, heat: int) -> str:
         title=title,
         source=source or "未知",
         heat=heat,
-        categories=CATEGORY_OPTIONS,
+        categories=category_options_text() or CATEGORY_OPTIONS,
     )
 
 

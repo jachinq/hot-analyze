@@ -151,8 +151,19 @@ async def run_daily_job(
                 it for it in cluster.items if force or it.id not in existing_map
             ]
 
-            # 全员已分析且非强制：直接跳过 AI
+            # 全员已分析且非强制：直接跳过 AI，仍刷新榜内名次/热度
             if not pending and not force:
+                for it in cluster.items:
+                    row = existing_map.get(it.id)
+                    if row is None:
+                        continue
+                    row.heat = it.heat
+                    if it.rank is not None:
+                        row.rank = it.rank
+                    if it.url:
+                        row.url = it.url
+                    if it.source:
+                        row.source = it.source
                 cluster_iter.set_postfix_str(f"已分析跳过 {title_short}", refresh=False)
                 stats["skipped"] += 1
                 # 跳过路径节流写库，避免大量 commit
@@ -167,6 +178,7 @@ async def run_daily_job(
                         current=idx,
                         total=len(clusters),
                     )
+                    db.commit()
                 continue
 
             result: dict[str, Any] | None = None
@@ -237,6 +249,7 @@ async def run_daily_job(
                     "title": it.title,
                     "source": it.source,
                     "heat": it.heat,
+                    "rank": it.rank,
                     "url": it.url,
                     "category": result.get("category"),
                     "sub_category": result.get("sub_category"),
@@ -389,6 +402,7 @@ def _row_to_dict(row: HotAnalysis) -> dict[str, Any]:
         "title": row.title,
         "source": row.source,
         "heat": row.heat,
+        "rank": row.rank,
         "url": row.url,
         "category": row.category,
         "sub_category": row.sub_category,
