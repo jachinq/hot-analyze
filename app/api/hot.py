@@ -11,9 +11,21 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db
 from app.db.models import DailyReport, HotAnalysis, JobRun
 from app.pipeline.daily_job import _row_to_dict
+from app.pipeline.preference import effective_importance
 from app.schemas import ApiResponse, CategoryStat, HotItemOut, TodayStats
 
 router = APIRouter(prefix="/api", tags=["hot"])
+
+
+def _sort_items_by_importance(rows: list[HotAnalysis]) -> list[HotAnalysis]:
+    return sorted(
+        rows,
+        key=lambda r: (
+            effective_importance(r.importance, r.category),
+            int(r.heat or 0),
+        ),
+        reverse=True,
+    )
 
 
 @router.get("/hot/category", response_model=ApiResponse[list[HotItemOut]])
@@ -23,11 +35,14 @@ def hot_by_category(
     db: Session = Depends(get_db),
 ):
     d = report_date or date_cls.today()
-    rows = db.scalars(
-        select(HotAnalysis)
-        .where(HotAnalysis.report_date == d, HotAnalysis.category == category)
-        .order_by(desc(HotAnalysis.importance), desc(HotAnalysis.heat))
-    ).all()
+    rows = list(
+        db.scalars(
+            select(HotAnalysis).where(
+                HotAnalysis.report_date == d, HotAnalysis.category == category
+            )
+        ).all()
+    )
+    rows = _sort_items_by_importance(rows)
     return ApiResponse(data=[HotItemOut(**_row_to_dict(r)) for r in rows])
 
 
@@ -51,8 +66,16 @@ def hot_search(
             | (HotAnalysis.summary.like(like))
             | (HotAnalysis.tags.like(like))
         )
-    q = q.order_by(desc(HotAnalysis.report_date), desc(HotAnalysis.importance)).limit(limit)
-    rows = db.scalars(q).all()
+    rows = list(db.scalars(q).all())
+    rows = sorted(
+        rows,
+        key=lambda r: (
+            r.report_date or date_cls.min,
+            effective_importance(r.importance, r.category),
+            int(r.heat or 0),
+        ),
+        reverse=True,
+    )[:limit]
     return ApiResponse(data=[HotItemOut(**_row_to_dict(r)) for r in rows])
 
 
@@ -64,13 +87,14 @@ def hot_ranking(
     db: Session = Depends(get_db),
 ):
     d = report_date or date_cls.today()
-    order = desc(HotAnalysis.importance) if by == "importance" else desc(HotAnalysis.heat)
-    rows = db.scalars(
-        select(HotAnalysis)
-        .where(HotAnalysis.report_date == d)
-        .order_by(order, desc(HotAnalysis.heat))
-        .limit(limit)
-    ).all()
+    rows = list(
+        db.scalars(select(HotAnalysis).where(HotAnalysis.report_date == d)).all()
+    )
+    if by == "heat":
+        rows = sorted(rows, key=lambda r: (int(r.heat or 0), effective_importance(r.importance, r.category)), reverse=True)
+    else:
+        rows = _sort_items_by_importance(rows)
+    rows = rows[:limit]
     return ApiResponse(data=[HotItemOut(**_row_to_dict(r)) for r in rows])
 
 

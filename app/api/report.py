@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db
 from app.db.models import DailyReport, HotAnalysis
 from app.pipeline.daily_job import _row_to_dict
+from app.pipeline.preference import effective_importance
 from app.schemas import ApiResponse, HotItemOut, ReportOut
 
 router = APIRouter(prefix="/api/report", tags=["report"])
@@ -24,11 +25,19 @@ def _build_report(db: Session, report: DailyReport) -> ReportOut:
             content = json.loads(report.content)
         except json.JSONDecodeError:
             content = {"markdown": report.content}
-    rows = db.scalars(
-        select(HotAnalysis)
-        .where(HotAnalysis.report_date == report.report_date)
-        .order_by(desc(HotAnalysis.importance), desc(HotAnalysis.heat))
-    ).all()
+    rows = list(
+        db.scalars(
+            select(HotAnalysis).where(HotAnalysis.report_date == report.report_date)
+        ).all()
+    )
+    rows = sorted(
+        rows,
+        key=lambda r: (
+            effective_importance(r.importance, r.category),
+            int(r.heat or 0),
+        ),
+        reverse=True,
+    )
     items = [HotItemOut(**_row_to_dict(r)) for r in rows]
     return ReportOut(
         date=report.report_date,

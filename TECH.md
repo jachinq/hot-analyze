@@ -186,6 +186,13 @@ pipeline:
   classify:
     rule_first: true          # 规则命中则跳过 AI
     ai_fallback: true
+  # 分类重要性偏好（仅排序/日报/API 展示；不改库内原始 importance）
+  # care 越靠前强化越大；ignore 越靠前弱化越大；默认 +3/+2/+1 与 -3/-2/-1
+  category_preference:
+    care: []                  # 例: [科技, 财经]
+    ignore: []                # 例: [娱乐, 体育]
+    boost_max: 3
+    suppress_max: 3
   batch_size: 20              # AI 批处理条数，控成本
 
 database:
@@ -414,7 +421,8 @@ User：
 
 ### 5.2 日报生成（对应 PRD 4.5）
 
-输入：当日 Top N（按 importance×heat）分析结果列表。  
+输入：当日 Top N（按 **effective_importance×heat**）分析结果列表。  
+`effective_importance` = 库内原始分 + `pipeline.category_preference`（care 强化 / ignore 弱化，按列表顺序递减）；仅排序与展示，不改库。  
 输出：`summary` + `highlights` + `trends` + 可读 Markdown。
 
 ---

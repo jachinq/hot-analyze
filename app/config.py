@@ -59,9 +59,21 @@ class ClassifyConfig(BaseModel):
     ai_fallback: bool = True
 
 
+class CategoryPreferenceConfig(BaseModel):
+    """关心/不关心分类：列表顺序越前加减分越大；仅影响排序与展示，不改库内原始分。"""
+
+    care: list[str] = Field(default_factory=list)
+    ignore: list[str] = Field(default_factory=list)
+    boost_max: int = 3
+    suppress_max: int = 3
+
+
 class PipelineConfig(BaseModel):
     cluster: ClusterConfig = Field(default_factory=ClusterConfig)
     classify: ClassifyConfig = Field(default_factory=ClassifyConfig)
+    category_preference: CategoryPreferenceConfig = Field(
+        default_factory=CategoryPreferenceConfig
+    )
     batch_size: int = 20
     report_top_n: int = 30
 

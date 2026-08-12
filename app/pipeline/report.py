@@ -13,18 +13,17 @@ from app.ai import prompts
 from app.ai.cost import CostExceededError, check_quota, log_call
 from app.ai.errors import InvalidAIJsonError
 from app.ai.factory import with_provider_fallback
+from app.pipeline.preference import effective_importance, sort_key_importance_heat
 
 logger = logging.getLogger(__name__)
 
 
 def _rule_report(report_date: date, analyses: list[dict[str, Any]]) -> dict[str, Any]:
-    top = sorted(analyses, key=lambda x: (x.get("importance", 0), x.get("heat", 0)), reverse=True)[
-        :8
-    ]
+    top = sorted(analyses, key=sort_key_importance_heat, reverse=True)[:8]
     highlights = [
         {
             "title": a.get("title"),
-            "impact": a.get("importance", 5),
+            "impact": effective_importance(a.get("importance", 5), a.get("category")),
             "summary": a.get("summary") or "",
         }
         for a in top
@@ -65,7 +64,10 @@ async def generate_daily_report(
 
     ranked = sorted(
         analyses,
-        key=lambda x: (x.get("importance", 0) * max(x.get("heat", 0), 1)),
+        key=lambda x: (
+            effective_importance(x.get("importance", 0), x.get("category"))
+            * max(x.get("heat", 0), 1)
+        ),
         reverse=True,
     )[:top_n]
     payload = [
@@ -73,7 +75,7 @@ async def generate_daily_report(
             "title": a.get("title"),
             "category": a.get("category"),
             "summary": a.get("summary"),
-            "importance": a.get("importance"),
+            "importance": effective_importance(a.get("importance"), a.get("category")),
             "heat": a.get("heat"),
             "tags": a.get("tags"),
         }

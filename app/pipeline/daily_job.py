@@ -16,6 +16,7 @@ from app.config import get_config
 from app.db.models import DailyReport, HotAnalysis, JobRun
 from app.ai.errors import InvalidAIJsonError
 from app.pipeline.cluster import _normalize_title, cluster_hots
+from app.pipeline.preference import effective_importance
 from app.pipeline.report import generate_daily_report
 from app.pipeline.summarize import analyze_item
 
@@ -393,6 +394,6 @@ def _row_to_dict(row: HotAnalysis) -> dict[str, Any]:
         "sub_category": row.sub_category,
         "summary": row.summary,
         "tags": tags,
-        "importance": row.importance,
+        "importance": effective_importance(row.importance, row.category),
         "cluster_id": row.cluster_id,
     }

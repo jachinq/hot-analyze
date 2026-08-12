@@ -47,6 +47,18 @@ pipeline:
   classify:
     rule_first: true
     ai_fallback: true
+  # 分类重要性偏好：仅影响排序/日报/API 展示，不改库内原始 importance
+  # care 越靠前强化越大；ignore 越靠前弱化越大；默认强度 3→2→1…
+  category_preference:
+    care:
+      - 社会
+      - 科技
+      - 财经
+    ignore:
+      - 娱乐
+      - 体育
+    boost_max: 3
+    suppress_max: 3
   # 整批整理按此大小切片后发给 AI（本地模型建议 15~30）
   batch_size: 20
   report_top_n: 30
