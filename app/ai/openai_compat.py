@@ -10,10 +10,13 @@ from typing import Any
 import httpx
 from openai import APITimeoutError, AsyncOpenAI, AuthenticationError
 
+from app.ai.errors import InvalidAIJsonError
+
 logger = logging.getLogger(__name__)
 
 
 def extract_json(text: str) -> dict[str, Any]:
+    raw = text
     text = text.strip()
     if text.startswith("```"):
         text = re.sub(r"^```(?:json)?\s*", "", text)
@@ -22,15 +25,26 @@ def extract_json(text: str) -> dict[str, Any]:
         data = json.loads(text)
         if isinstance(data, dict):
             return data
+        raise ValueError(f"JSON root is not object: {type(data).__name__}")
     except json.JSONDecodeError:
         pass
     m = re.search(r"\{[\s\S]*\}", text)
     if not m:
-        raise ValueError(f"no JSON object in response: {text[:200]}")
-    data = json.loads(m.group(0))
+        raise ValueError(f"no JSON object in response: {raw[:200]}")
+    try:
+        data = json.loads(m.group(0))
+    except json.JSONDecodeError as e:
+        raise ValueError(f"embedded JSON decode failed: {e}") from e
     if not isinstance(data, dict):
         raise ValueError("JSON root is not object")
     return data
+
+
+def _clip(text: str, limit: int = 1500) -> str:
+    text = text or ""
+    if len(text) <= limit:
+        return text
+    return text[:limit] + f"…(truncated, total={len(text)})"
 
 
 class OpenAICompatProvider:
@@ -91,9 +105,48 @@ class OpenAICompatProvider:
             return extract_json(text)
         except (APITimeoutError, TimeoutError, AuthenticationError, httpx.TimeoutException):
             raise
-        except Exception:
+        except Exception as first_err:
             # 仅对 JSON 解析失败重试一次；超时/鉴权不再重试以免双倍等待
-            logger.warning("JSON parse failed for %s, retrying once", self.name)
-            retry_user = user + "\n\n上一次输出不是合法 JSON，请严格只输出 JSON 对象。"
-            text2 = await self.chat_text(system, retry_user, **kw)
-            return extract_json(text2)
+            logger.warning(
+                "JSON parse failed for provider=%s model=%s err=%s; raw_response=%s",
+                self.name,
+                self.model,
+                first_err,
+                _clip(text),
+            )
+            retry_user = (
+                user
+                + "\n\n上一次输出不是合法 JSON，请严格只输出一个 JSON 对象，"
+                + "不要 Markdown 代码块，不要解释文字。"
+            )
+            try:
+                text2 = await self.chat_text(system, retry_user, **kw)
+            except (APITimeoutError, TimeoutError, AuthenticationError, httpx.TimeoutException):
+                raise
+            except Exception as retry_call_err:
+                logger.error(
+                    "JSON retry request failed for provider=%s: %s",
+                    self.name,
+                    retry_call_err,
+                )
+                raise InvalidAIJsonError(
+                    f"JSON retry request failed: {retry_call_err}",
+                    raw=text,
+                ) from retry_call_err
+
+            try:
+                return extract_json(text2)
+            except Exception as second_err:
+                logger.error(
+                    "JSON parse retry still failed for provider=%s model=%s err=%s; "
+                    "first_raw=%s; retry_raw=%s",
+                    self.name,
+                    self.model,
+                    second_err,
+                    _clip(text),
+                    _clip(text2),
+                )
+                raise InvalidAIJsonError(
+                    f"invalid AI JSON after retry: {second_err}",
+                    raw=text2 or text,
+                ) from second_err

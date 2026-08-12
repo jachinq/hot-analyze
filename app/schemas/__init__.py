@@ -78,5 +78,9 @@ class JobOut(BaseModel):
     report_date: date | None = None
     status: str
     message: str | None = None
+    progress: int = 0
+    stage: str | None = None
+    current: int = 0
+    total: int = 0
     started_at: datetime | None = None
     finished_at: datetime | None = None

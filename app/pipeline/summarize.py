@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.ai import prompts
 from app.ai.cost import CostExceededError, check_quota, log_call
+from app.ai.errors import InvalidAIJsonError
 from app.ai.factory import with_provider_fallback
 from app.clients.hot_collector import HotItem
 from app.config import get_config
@@ -97,6 +98,26 @@ async def analyze_item(db: Session, item: HotItem) -> dict[str, Any]:
             "tags": [str(t) for t in tags][:10],
             "from_ai": True,
         }
+    except InvalidAIJsonError as e:
+        # 已重试仍无法解析：向上抛出，由 daily_job 跳过本条继续后续任务
+        logger.error(
+            "AI analyze invalid JSON, will skip hot_id=%s title=%s raw=%s",
+            item.id,
+            (item.title or "")[:80],
+            (e.raw or "")[:800],
+        )
+        try:
+            log_call(
+                db,
+                provider="unknown",
+                model="",
+                purpose="analyze",
+                success=False,
+                error_msg=f"invalid_json: {e}",
+            )
+        except Exception:
+            pass
+        raise
     except Exception as e:
         logger.exception("AI analyze failed hot_id=%s: %s", item.id, e)
         try:

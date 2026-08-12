@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.ai import prompts
 from app.ai.cost import CostExceededError, check_quota, log_call
+from app.ai.errors import InvalidAIJsonError
 from app.ai.factory import with_provider_fallback
 
 logger = logging.getLogger(__name__)
@@ -108,6 +109,23 @@ async def generate_daily_report(
             "trends": data.get("trends") or [],
             "markdown": str(data.get("markdown") or ""),
         }
+    except InvalidAIJsonError as e:
+        logger.error(
+            "AI report invalid JSON after retry, fallback to rule report; raw=%s",
+            (e.raw or "")[:800],
+        )
+        try:
+            log_call(
+                db,
+                provider="unknown",
+                model="",
+                purpose="report",
+                success=False,
+                error_msg=f"invalid_json: {e}",
+            )
+        except Exception:
+            pass
+        return _rule_report(report_date, analyses)
     except Exception as e:
         logger.exception("AI report failed: %s", e)
         try:

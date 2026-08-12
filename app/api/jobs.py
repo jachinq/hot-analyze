@@ -24,6 +24,10 @@ def _job_out(row: JobRun) -> JobOut:
         report_date=row.report_date,
         status=row.status,
         message=row.message,
+        progress=int(row.progress or 0),
+        stage=row.stage,
+        current=int(row.current or 0),
+        total=int(row.total or 0),
         started_at=row.started_at,
         finished_at=row.finished_at,
     )

@@ -64,11 +64,8 @@
           >
             强制重跑
           </button>
-          <p class="analyze-hint">
-            <template v-if="analyzing">
-              {{ jobHint || '任务已提交，正在拉取热点并生成总结…' }}
-            </template>
-            <template v-else-if="stats?.has_report">
+          <p class="analyze-hint" v-if="!analyzing">
+            <template v-if="stats?.has_report">
               该日已有分析，再次运行会跳过已总结条目，仅补全新增热点并刷新日报
             </template>
             <template v-else>
@@ -77,7 +74,31 @@
           </p>
         </div>
 
-        <p v-if="analyzeMsg" class="hint" :class="{ ok: analyzeOk }">{{ analyzeMsg }}</p>
+        <div v-if="analyzing" class="job-progress">
+          <div class="job-progress__meta">
+            <span class="job-progress__stage">{{ stageLabel }}</span>
+            <span class="job-progress__pct">{{ displayProgress }}%</span>
+          </div>
+          <div
+            class="job-progress__track"
+            role="progressbar"
+            :aria-valuenow="displayProgress"
+            aria-valuemin="0"
+            aria-valuemax="100"
+          >
+            <div
+              class="job-progress__fill"
+              :class="{ indeterminate: jobProgress <= 0 }"
+              :style="{ width: jobProgress <= 0 ? '28%' : `${displayProgress}%` }"
+            />
+          </div>
+          <p class="job-progress__detail">
+            <template v-if="jobTotal > 0">{{ jobCurrent }}/{{ jobTotal }} · </template>
+            {{ jobHint || '任务进行中…' }}
+          </p>
+        </div>
+
+        <p v-if="analyzeMsg && !analyzing" class="hint" :class="{ ok: analyzeOk }">{{ analyzeMsg }}</p>
         <p v-if="stats && !stats.has_report && !analyzing" class="hint">
           任务状态：{{ stats.job_status || '未运行' }}
           <button class="linkish" @click="loadLatestFallback">查看最近日报</button>
@@ -177,8 +198,17 @@ import { marked } from 'marked'
 import { api, todayISO, type HotItem, type Report, type TodayStats } from '../api'
 import HotCard from '../components/HotCard.vue'
 
-const POLL_MS = 2500
-const POLL_MAX = 120
+const POLL_MS = 1200
+const POLL_MAX = 250
+
+const STAGE_LABELS: Record<string, string> = {
+  fetch: '拉取热点',
+  cluster: '聚类去重',
+  analyze: 'AI 分析',
+  report: '生成日报',
+  done: '已完成',
+  failed: '失败',
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -191,6 +221,10 @@ const error = ref('')
 const analyzeMsg = ref('')
 const analyzeOk = ref(false)
 const jobHint = ref('')
+const jobProgress = ref(0)
+const jobStage = ref('')
+const jobCurrent = ref(0)
+const jobTotal = ref(0)
 const stats = ref<TodayStats | null>(null)
 const report = ref<Report | null>(null)
 const ranking = ref<HotItem[]>([])
@@ -199,6 +233,10 @@ let pollTimer: ReturnType<typeof setTimeout> | null = null
 let pollCount = 0
 
 const isToday = computed(() => selectedDate.value === today)
+const displayProgress = computed(() => Math.max(0, Math.min(100, jobProgress.value)))
+const stageLabel = computed(
+  () => STAGE_LABELS[jobStage.value] || (analyzing.value ? '排队中' : '进度'),
+)
 
 const maxCat = computed(() =>
   Math.max(1, ...(stats.value?.categories.map((c) => c.count) || [1])),
@@ -241,6 +279,28 @@ function stopPoll() {
   }
 }
 
+function resetProgress() {
+  jobProgress.value = 0
+  jobStage.value = ''
+  jobCurrent.value = 0
+  jobTotal.value = 0
+  jobHint.value = ''
+}
+
+function applyJobProgress(job: {
+  progress?: number | null
+  stage?: string | null
+  current?: number | null
+  total?: number | null
+  message?: string | null
+}) {
+  if (typeof job.progress === 'number') jobProgress.value = job.progress
+  if (job.stage) jobStage.value = job.stage
+  if (typeof job.current === 'number') jobCurrent.value = job.current
+  if (typeof job.total === 'number') jobTotal.value = job.total
+  if (job.message) jobHint.value = job.message
+}
+
 async function load(date = selectedDate.value) {
   loading.value = true
   error.value = ''
@@ -255,6 +315,12 @@ async function load(date = selectedDate.value) {
     if (stats.value.job_status === 'running' && !analyzing.value) {
       analyzing.value = true
       jobHint.value = '检测到进行中的分析任务…'
+      try {
+        const jobs = await api.jobs(date)
+        if (jobs[0]) applyJobProgress(jobs[0])
+      } catch {
+        /* ignore */
+      }
       schedulePoll(date)
     }
   } catch (e) {
@@ -272,7 +338,7 @@ function applyDate(date: string) {
   stopPoll()
   analyzing.value = false
   analyzeMsg.value = ''
-  jobHint.value = ''
+  resetProgress()
   if (selectedDate.value !== capped) {
     selectedDate.value = capped
   }
@@ -320,6 +386,8 @@ async function startAnalyze(force: boolean) {
   analyzing.value = true
   analyzeMsg.value = ''
   analyzeOk.value = false
+  resetProgress()
+  jobStage.value = 'fetch'
   jobHint.value = force
     ? '已提交强制重跑任务…'
     : '已提交分析任务（已有结果将跳过）…'
@@ -329,8 +397,11 @@ async function startAnalyze(force: boolean) {
 
   try {
     const accepted = await api.triggerAnalyze(date, force)
+    applyJobProgress(accepted)
     jobHint.value = accepted.message || '任务排队中…'
     if (accepted.status === 'success') {
+      jobProgress.value = 100
+      jobStage.value = 'done'
       analyzing.value = false
       analyzeOk.value = true
       analyzeMsg.value = accepted.message || '分析完成'
@@ -360,20 +431,22 @@ async function pollJob(date: string) {
     const jobs = await api.jobs(date)
     const latest = jobs[0]
     if (latest) {
+      applyJobProgress(latest)
       if (latest.status === 'running') {
-        jobHint.value = latest.message || '分析进行中…'
+        // keep polling
       } else if (latest.status === 'success') {
+        jobProgress.value = 100
+        jobStage.value = 'done'
         analyzing.value = false
         analyzeOk.value = true
         analyzeMsg.value = latest.message || '分析完成'
-        jobHint.value = ''
         await load(date)
         return
       } else if (latest.status === 'failed') {
+        jobStage.value = 'failed'
         analyzing.value = false
         analyzeOk.value = false
         analyzeMsg.value = latest.message || '分析失败'
-        jobHint.value = ''
         stats.value = await api.statsToday(date)
         return
       }
@@ -381,18 +454,19 @@ async function pollJob(date: string) {
       const s = await api.statsToday(date)
       stats.value = s
       if (s.job_status === 'success' || s.has_report) {
+        jobProgress.value = 100
+        jobStage.value = 'done'
         analyzing.value = false
         analyzeOk.value = true
         analyzeMsg.value = '分析完成'
-        jobHint.value = ''
         await load(date)
         return
       }
       if (s.job_status === 'failed') {
+        jobStage.value = 'failed'
         analyzing.value = false
         analyzeOk.value = false
         analyzeMsg.value = '分析失败'
-        jobHint.value = ''
         return
       }
     }
@@ -404,7 +478,6 @@ async function pollJob(date: string) {
     analyzing.value = false
     analyzeOk.value = false
     analyzeMsg.value = '等待超时，请稍后刷新查看结果'
-    jobHint.value = ''
     return
   }
   schedulePoll(date)
@@ -417,6 +490,8 @@ watch(
     if (fromRoute !== selectedDate.value) {
       stopPoll()
       analyzing.value = false
+      analyzeMsg.value = ''
+      resetProgress()
       selectedDate.value = fromRoute
       load(fromRoute)
     }

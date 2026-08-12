@@ -93,5 +93,10 @@ class JobRun(Base):
     report_date: Mapped[date | None] = mapped_column(Date)
     status: Mapped[str] = mapped_column(String(32), default="running")  # running|success|failed
     message: Mapped[str | None] = mapped_column(Text)
+    # 进度：0-100；stage 如 fetch/cluster/analyze/report/done
+    progress: Mapped[int] = mapped_column(Integer, default=0)
+    stage: Mapped[str | None] = mapped_column(String(32))
+    current: Mapped[int] = mapped_column(Integer, default=0)
+    total: Mapped[int] = mapped_column(Integer, default=0)
     started_at: Mapped[datetime | None] = mapped_column(DateTime, default=func.now())
     finished_at: Mapped[datetime | None] = mapped_column(DateTime)

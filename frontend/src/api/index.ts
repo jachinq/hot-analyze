@@ -52,6 +52,10 @@ export interface JobRun {
   report_date?: string | null
   status: string
   message?: string | null
+  progress?: number
+  stage?: string | null
+  current?: number
+  total?: number
   started_at?: string | null
   finished_at?: string | null
 }
@@ -62,6 +66,8 @@ export interface AnalyzeAccepted {
   message?: string
   job_id?: number
   hot_count?: number
+  progress?: number
+  stage?: string
   ai_calls?: number
   skipped?: number
   reused?: number

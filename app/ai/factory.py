@@ -17,6 +17,8 @@ from app.config import get_config
 from app.db.models import AIConfigRow
 from app.security.crypto import decrypt_secret
 
+from app.ai.errors import InvalidAIJsonError
+
 logger = logging.getLogger(__name__)
 
 LOCAL_PROVIDERS = {"lmstudio", "ollama"}
@@ -218,6 +220,9 @@ async def with_provider_fallback(
     for p in candidates:
         try:
             return await coro_factory(p), p
+        except InvalidAIJsonError:
+            # JSON 已在 Provider 内重试过；换模型也难保证结构，交给上层跳过当前条
+            raise
         except Exception as e:
             msg = f"{p.name}: {e}"
             logger.warning("provider %s failed: %s", p.name, e)

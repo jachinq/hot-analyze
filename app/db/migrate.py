@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from sqlalchemy import select
+from sqlalchemy import inspect, select, text
 from sqlalchemy.orm import Session
 
 from app.config import get_config
@@ -19,11 +19,35 @@ logger = logging.getLogger(__name__)
 def init_db() -> None:
     engine = get_engine()
     models.Base.metadata.create_all(bind=engine)
+    _ensure_job_run_progress_columns(engine)
     SessionLocal = get_session_factory()
     with SessionLocal() as db:
         seed_ai_config_from_yaml(db)
         db.commit()
     logger.info("database initialized")
+
+
+def _ensure_job_run_progress_columns(engine) -> None:
+    """为已有 job_run 表补齐进度字段（create_all 不会 ALTER）。"""
+    insp = inspect(engine)
+    if "job_run" not in insp.get_table_names():
+        return
+    existing = {c["name"] for c in insp.get_columns("job_run")}
+    alters = []
+    if "progress" not in existing:
+        alters.append("ALTER TABLE job_run ADD COLUMN progress INTEGER DEFAULT 0")
+    if "stage" not in existing:
+        alters.append("ALTER TABLE job_run ADD COLUMN stage VARCHAR(32)")
+    if "current" not in existing:
+        alters.append("ALTER TABLE job_run ADD COLUMN current INTEGER DEFAULT 0")
+    if "total" not in existing:
+        alters.append("ALTER TABLE job_run ADD COLUMN total INTEGER DEFAULT 0")
+    if not alters:
+        return
+    with engine.begin() as conn:
+        for sql in alters:
+            conn.execute(text(sql))
+    logger.info("job_run progress columns ensured: %s", len(alters))
 
 
 def seed_ai_config_from_yaml(db: Session) -> None:
