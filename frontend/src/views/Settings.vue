@@ -1,7 +1,7 @@
 <template>
   <div class="page">
     <section class="hero-panel compact">
-      <div>
+      <div class="hero-copy">
         <p class="eyebrow">系统设置</p>
         <h1>上游服务 / AI / 调度 / 流水线</h1>
         <p class="lead">配置写入数据库，保存后立即生效；YAML 仅作首次种子与兜底。</p>

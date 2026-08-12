@@ -1,7 +1,7 @@
 <template>
   <div class="page">
     <section class="hero-panel compact">
-      <div>
+      <div class="hero-copy">
         <p class="eyebrow">历史检索</p>
         <h1>按日期 / 分类 / 关键词查找</h1>
       </div>

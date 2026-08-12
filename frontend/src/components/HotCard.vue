@@ -1,7 +1,7 @@
 <template>
   <article class="hot-card">
     <div class="hot-card__meta">
-      <span v-if="rank" class="">{{ rank }}</span>
+      <span v-if="rank != null" class="hot-card__rank">#{{ rank }}</span>
       <span class="badge">{{ item.category || '其他' }}</span>
       <span class="source">{{ item.source || '未知来源' }}</span>
       <span class="heat">热度 {{ formatHeat(item.heat) }}</span>
@@ -12,7 +12,7 @@
     </h3>
     <p class="hot-card__summary">{{ item.summary || '暂无摘要' }}</p>
     <div class="hot-card__foot">
-      <div class="stars" :title="`重要性 ${item.importance}/10`">
+      <div class="stars" :title="`重要性 ${item.importance}/10`" :aria-label="`重要性 ${item.importance} 分`">
         <span v-for="i in 10" :key="i" :class="{ on: i <= item.importance }">★</span>
       </div>
       <div class="tags" v-if="item.tags?.length">
@@ -25,7 +25,10 @@
 <script setup lang="ts">
 import type { HotItem } from '../api'
 
-defineProps<{ item: HotItem, rank: number }>()
+withDefaults(
+  defineProps<{ item: HotItem; rank?: number | null }>(),
+  { rank: null },
+)
 
 function formatHeat(n: number) {
   if (n >= 10000) return `${(n / 10000).toFixed(1)}万`

@@ -1,7 +1,7 @@
 <template>
   <div class="page">
     <section class="hero-panel">
-      <div>
+      <div class="hero-copy">
         <p class="eyebrow">{{ selectedDate }}</p>
         <h1>{{ isToday ? '今日热点总览' : '历史热点总览' }}</h1>
         <p class="lead">
@@ -104,7 +104,7 @@
           <button class="linkish" @click="loadLatestFallback">查看最近日报</button>
         </p>
       </div>
-      <div class="stat-block">
+      <div class="stat-block" aria-label="当日概览指标">
         <div class="stat">
           <strong>{{ stats?.hot_count ?? '—' }}</strong>
           <span>热点条数</span>
@@ -128,7 +128,7 @@
       <div class="panel">
         <h2>分类分布</h2>
         <div class="bars" v-if="stats.categories.length">
-          <div v-for="c in stats.categories" :key="c.category" class="bar-row">
+          <div v-for="(c, idx) in stats.categories" :key="c.category" class="bar-row">
             <router-link
               class="bar-label"
               :to="{
@@ -139,7 +139,13 @@
               {{ c.category }}
             </router-link>
             <div class="bar-track">
-              <div class="bar-fill" :style="{ width: barWidth(c.count) }"></div>
+              <div
+                class="bar-fill"
+                :style="{
+                  width: barWidth(c.count),
+                  animationDelay: `${Math.min(idx, 8) * 0.05}s`,
+                }"
+              ></div>
             </div>
             <span class="bar-count">{{ c.count }}</span>
           </div>
@@ -185,7 +191,14 @@
     <section class="panel" v-if="!loading && report?.items?.length">
       <h2>热点列表</h2>
       <div class="card-list">
-        <HotCard v-for="(item, idx) in report.items" :key="item.hot_id" :item="item" :rank="idx + 1" />
+        <HotCard
+          v-for="(item, idx) in report.items"
+          :key="item.hot_id"
+          :item="item"
+          :rank="idx + 1"
+          :style="{ animationDelay: `${Math.min(idx, 12) * 0.04}s` }"
+          class="hot-card--stagger"
+        />
       </div>
     </section>
   </div>
@@ -248,8 +261,120 @@ function barWidth(count: number) {
 
 const markdownHtml = computed(() => {
   const md = report.value?.content?.markdown || ''
-  return marked.parse(md, { async: false }) as string
+  const html = marked.parse(md, { async: false }) as string
+  return linkifyHighlightTitles(html, report.value?.items || [])
 })
+
+/** 将「重点事件」里的标题匹配热点 URL，包成可点击链接 */
+function linkifyHighlightTitles(html: string, items: HotItem[]): string {
+  const linked = items.filter((i) => i.url && i.title?.trim())
+  if (!html || !linked.length) return html
+
+  const byNorm = new Map<string, string>()
+  for (const it of linked) {
+    byNorm.set(normalizeTitle(it.title), it.url!)
+  }
+
+  const findUrl = (raw: string): string | null => {
+    const t = normalizeTitle(raw)
+    if (!t) return null
+    const exact = byNorm.get(t)
+    if (exact) return exact
+    // AI 可能微调标题：用最长包含匹配
+    let best: { url: string; len: number } | null = null
+    for (const it of linked) {
+      const nt = normalizeTitle(it.title)
+      if (!nt) continue
+      if (t.includes(nt) || nt.includes(t)) {
+        if (!best || nt.length > best.len) best = { url: it.url!, len: nt.length }
+      }
+    }
+    return best?.url ?? null
+  }
+
+  if (typeof DOMParser === 'undefined') return html
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  const body = doc.body
+
+  const headings = Array.from(body.querySelectorAll('h1, h2, h3, h4'))
+  const start = headings.find((h) => (h.textContent || '').includes('重点事件'))
+  const scopeRoots: Element[] = []
+  if (start) {
+    let node: ChildNode | null = start.nextSibling
+    while (node) {
+      if (node instanceof HTMLElement && /^H[1-4]$/i.test(node.tagName)) break
+      if (node instanceof HTMLElement) scopeRoots.push(node)
+      node = node.nextSibling
+    }
+  } else {
+    scopeRoots.push(body)
+  }
+
+  for (const root of scopeRoots) {
+    for (const strong of Array.from(root.querySelectorAll('strong, b'))) {
+      if (strong.closest('a')) continue
+      if (strong.querySelector('a')) continue
+      const url = findUrl(strong.textContent || '')
+      if (!url) continue
+      const a = doc.createElement('a')
+      a.href = url
+      a.target = '_blank'
+      a.rel = 'noopener noreferrer'
+      a.className = 'md-hot-link'
+      while (strong.firstChild) a.appendChild(strong.firstChild)
+      strong.appendChild(a)
+    }
+
+    for (const li of Array.from(root.querySelectorAll('li'))) {
+      if (li.querySelector('a')) continue
+      const text = (li.textContent || '').trim()
+      if (!text) continue
+      let best: { title: string; url: string; len: number } | null = null
+      for (const it of linked) {
+        const title = it.title.trim()
+        const nt = normalizeTitle(title)
+        if (!nt || nt.length < 4) continue
+        if (normalizeTitle(text).startsWith(nt) || text.startsWith(title)) {
+          if (!best || nt.length > best.len) best = { title, url: it.url!, len: nt.length }
+        }
+      }
+      if (!best) continue
+
+      const walker = doc.createTreeWalker(li, NodeFilter.SHOW_TEXT)
+      let textNode: Text | null = null
+      while (walker.nextNode()) {
+        const n = walker.currentNode as Text
+        if ((n.nodeValue || '').includes(best.title)) {
+          textNode = n
+          break
+        }
+      }
+      if (!textNode?.nodeValue || !textNode.parentNode) continue
+      const full = textNode.nodeValue
+      const at = full.indexOf(best.title)
+      if (at < 0) continue
+      const before = full.slice(0, at)
+      const after = full.slice(at + best.title.length)
+      const a = doc.createElement('a')
+      a.href = best.url
+      a.target = '_blank'
+      a.rel = 'noopener noreferrer'
+      a.className = 'md-hot-link'
+      a.textContent = best.title
+      const parent = textNode.parentNode
+      if (before) parent.insertBefore(doc.createTextNode(before), textNode)
+      parent.insertBefore(a, textNode)
+      if (after) parent.insertBefore(doc.createTextNode(after), textNode)
+      parent.removeChild(textNode)
+    }
+  }
+
+  return body.innerHTML
+}
+
+function normalizeTitle(s: string | null | undefined): string {
+  return (s || '').replace(/\s+/g, '').trim()
+}
 
 function normalizeDate(value: unknown): string | null {
   if (typeof value !== 'string') return null

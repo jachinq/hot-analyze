@@ -1,7 +1,7 @@
 <template>
   <div class="page">
     <section class="hero-panel compact">
-      <div>
+      <div class="hero-copy">
         <p class="eyebrow">分类浏览</p>
         <h1>{{ name }}</h1>
         <p class="lead">{{ date }} · 共 {{ items.length }} 条</p>

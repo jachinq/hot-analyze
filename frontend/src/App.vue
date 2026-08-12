@@ -18,7 +18,11 @@
       </nav>
     </header>
     <main class="main">
-      <router-view />
+      <router-view v-slot="{ Component }">
+        <Transition name="page-fade" mode="out-in">
+          <component :is="Component" />
+        </Transition>
+      </router-view>
     </main>
   </div>
 </template>
@@ -31,7 +35,7 @@ const collectorBaseUrl = ref('')
 
 const collectorStaticUrl = computed(() => {
   const base = collectorBaseUrl.value.trim().replace(/\/+$/, '')
-  return base ? `${base}/static/` : '' 
+  return base ? `${base}/static/` : ''
 })
 
 onMounted(async () => {
@@ -43,3 +47,24 @@ onMounted(async () => {
   }
 })
 </script>
+
+<style>
+.page-fade-enter-active,
+.page-fade-leave-active {
+  transition: opacity 0.22s ease, transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.page-fade-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.page-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-fade-enter-active,
+  .page-fade-leave-active {
+    transition: none;
+  }
+}
+</style>

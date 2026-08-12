@@ -37,12 +37,13 @@ REPORT_USER_TMPL = """日期: {date}
 {{
   "summary": "一句话总览今日热点",
   "highlights": [
-    {{"title": "...", "impact": 5, "summary": "..."}}
+    {{"title": "...", "impact": 5, "summary": "...", "url": "原条目url，没有则空字符串"}}
   ],
   "trends": ["趋势词1", "趋势词2"],
   "markdown": "可读的 Markdown 日报正文"
 }}
 highlights 最多 8 条，trends 3-6 个。
+markdown 中「重点事件」标题必须使用 Markdown 链接：`- **[标题](url)**：摘要`（无 url 时写纯标题）。
 """
 
 

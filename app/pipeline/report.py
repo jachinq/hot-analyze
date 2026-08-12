@@ -25,6 +25,7 @@ def _rule_report(report_date: date, analyses: list[dict[str, Any]]) -> dict[str,
             "title": a.get("title"),
             "impact": effective_importance(a.get("importance", 5), a.get("category")),
             "summary": a.get("summary") or "",
+            "url": a.get("url") or "",
         }
         for a in top
     ]
@@ -36,7 +37,10 @@ def _rule_report(report_date: date, analyses: list[dict[str, Any]]) -> dict[str,
     summary = f"{report_date.isoformat()} 共 {len(analyses)} 条热点，集中在：{'、'.join(trends) or '综合'}"
     lines = [f"# {report_date.isoformat()} 热点日报", "", summary, "", "## 重点事件"]
     for h in highlights:
-        lines.append(f"- **{h['title']}**（影响 {h['impact']}）：{h['summary']}")
+        title = h["title"] or ""
+        url = (h.get("url") or "").strip()
+        title_md = f"[{title}]({url})" if url else title
+        lines.append(f"- **{title_md}**（影响 {h['impact']}）：{h['summary']}")
     if trends:
         lines.extend(["", "## 趋势", ", ".join(trends)])
     return {
@@ -78,6 +82,7 @@ async def generate_daily_report(
             "importance": effective_importance(a.get("importance"), a.get("category")),
             "heat": a.get("heat"),
             "tags": a.get("tags"),
+            "url": a.get("url") or "",
         }
         for a in ranked
     ]

@@ -19,7 +19,7 @@ export interface HotItem {
 }
 
 export interface ReportContent {
-  highlights?: Array<{ title?: string; impact?: number; summary?: string }>
+  highlights?: Array<{ title?: string; impact?: number; summary?: string; url?: string }>
   trends?: string[]
   markdown?: string
 }
