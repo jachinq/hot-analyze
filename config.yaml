@@ -1,0 +1,63 @@
+collector:
+  base_url: "http://127.0.0.1:8080"
+  list_path: "/api/hot/list"
+  timeout_sec: 30
+  max_retries: 3
+
+scheduler:
+  daily_cron: "0 8 * * *"
+  timezone: "Asia/Shanghai"
+  enabled: true
+
+ai:
+  prefer_local: true
+  max_calls_per_day: 2000
+  max_tokens_per_day: 500000
+  # 本地推理超时（秒）
+  timeout_sec: 120
+  default_provider: lmstudio
+  providers:
+    - name: lmstudio
+      provider: lmstudio
+      api_url: "http://127.0.0.1:1234/v1"
+      model: "google/gemma-4-e2b"
+      enabled: true
+      priority: 10
+      # api_key 可填任意非空占位；也可从环境变量 LMSTUDIO_API_KEY 读取
+    - name: ollama
+      provider: ollama
+      api_url: "http://127.0.0.1:11434/v1"
+      model: "qwen2.5"
+      enabled: false
+      priority: 20
+    - name: deepseek
+      provider: openai
+      api_url: "https://api.deepseek.com/v1"
+      model: "deepseek-chat"
+      # 未配置 DEEPSEEK_API_KEY 时会被自动跳过，避免用占位 key 打到 401
+      enabled: true
+      priority: 100
+      # api_key 从环境变量 DEEPSEEK_API_KEY 读取
+
+pipeline:
+  cluster:
+    enabled: true
+    method: "tfidf"           # tfidf | title_sim（规则回退整理时使用）
+    similarity_threshold: 0.72
+  classify:
+    rule_first: true
+    ai_fallback: true
+  # 整批整理按此大小切片后发给 AI（本地模型建议 15~30）
+  batch_size: 20
+  report_top_n: 30
+
+database:
+  url: "sqlite:///./data/analyzer.db"
+
+security:
+  encrypt_api_key: true
+
+cors:
+  allow_origins:
+    - "http://127.0.0.1:5173"
+    - "http://localhost:5173"

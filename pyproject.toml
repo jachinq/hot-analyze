@@ -1,0 +1,29 @@
+[project]
+name = "hot-analyze"
+version = "0.1.0"
+description = "AI热点分析平台：拉取热点、聚类分类摘要、日报与 Web 展示"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "aiosqlite>=0.22.1",
+    "apscheduler>=3.11.3",
+    "cryptography>=50.0.0",
+    "fastapi>=0.141.1",
+    "httpx>=0.28.1",
+    "openai>=2.53.0",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.15.0",
+    "python-dotenv>=1.2.2",
+    "pyyaml>=6.0.3",
+    "scikit-learn>=1.9.0",
+    "sqlalchemy>=2.0.51",
+    "tqdm>=4.67.0",
+    "uvicorn[standard]>=0.52.1",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+]

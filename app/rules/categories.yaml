@@ -1,0 +1,25 @@
+categories:
+  - name: 科技
+    children: [AI, 软件, 硬件]
+    keywords: [AI, 大模型, 芯片, GPT, 开源, 人工智能, 算法, 机器人, 量子, 半导体, 苹果, 华为, 小米]
+  - name: 财经
+    children: [股票, 公司]
+    keywords: [股市, A股, 财报, 上市, 央行, 利率, 基金, 证券, 美联储, GDP, 通胀, 房价]
+  - name: 新闻
+    children: [国内, 国际]
+    keywords: [政策, 外交, 国务院, 两会, 政府, 领导人, 制裁, 峰会]
+  - name: 社会
+    children: [民生, 法治]
+    keywords: [民生, 教育, 医疗, 养老, 就业, 事故, 法院, 警方]
+  - name: 娱乐
+    children: [影视, 明星]
+    keywords: [电影, 综艺, 明星, 演唱会, 短剧, 票房, 演员, 导演]
+  - name: 体育
+    children: [足球, 篮球]
+    keywords: [足球, 篮球, 奥运, NBA, 世界杯, 联赛, 夺冠, 运动员]
+  - name: 军事
+    children: [国防, 国际安全]
+    keywords: [军事, 国防, 导弹, 航母, 演习, 军方, 武器]
+  - name: 其他
+    children: []
+    keywords: []
