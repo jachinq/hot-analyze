@@ -2,20 +2,23 @@
   <div class="layout">
     <header class="topbar">
       <router-link to="/" class="brand">AI 热点分析</router-link>
-      <nav>
-        <router-link to="/">首页</router-link>
-        <router-link to="/history">历史检索</router-link>
-        <router-link to="/settings">设置</router-link>
-        <a
-          v-if="collectorStaticUrl"
-          class="collector-link"
-          :href="collectorStaticUrl"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          采集控制台
-        </a>
-      </nav>
+      <div class="topbar-end">
+        <nav>
+          <router-link to="/">首页</router-link>
+          <router-link to="/history">历史检索</router-link>
+          <router-link to="/settings">设置</router-link>
+          <a
+            v-if="collectorStaticUrl"
+            class="collector-link"
+            :href="collectorStaticUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            采集控制台
+          </a>
+        </nav>
+        <ThemeSwitch />
+      </div>
     </header>
     <main class="main">
       <router-view v-slot="{ Component }">
@@ -30,6 +33,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { api } from './api'
+import ThemeSwitch from './components/ThemeSwitch.vue'
+import { useTheme } from './composables/useTheme'
+
+useTheme()
 
 const collectorBaseUrl = ref('')
 

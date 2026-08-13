@@ -12,8 +12,10 @@
           }}
         </p>
         <div class="date-switcher">
-          <button type="button" class="date-nav" :disabled="loading || analyzing" @click="shiftDate(-1)" title="前一天">
-            ‹
+          <button type="button" class="date-nav" :disabled="loading || analyzing" @click="shiftDate(-1)" title="前一天" aria-label="前一天">
+            <svg class="date-nav__icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M14.5 5.5 8 12l6.5 6.5" />
+            </svg>
           </button>
           <label class="date-picker">
             <span class="sr-only">选择日期</span>
@@ -32,7 +34,9 @@
             @click="shiftDate(1)"
             title="后一天"
           >
-            ›
+            <svg class="date-nav__icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M9.5 5.5 16 12l-6.5 6.5" />
+            </svg>
           </button>
           <button
             v-if="!isToday"
