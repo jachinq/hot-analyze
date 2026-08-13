@@ -273,8 +273,16 @@ const markdownHtml = computed(() => {
   return linkifyHighlightTitles(html, report.value?.items || [])
 })
 
+function openLinkInNewWindow(a: HTMLAnchorElement) {
+  a.target = '_blank'
+  a.rel = 'noopener noreferrer'
+}
+
 /** 将「重点事件」里的标题匹配热点 URL，包成可点击链接 */
 function linkifyHighlightTitles(html: string, topics: TopicItem[]): string {
+  if (!html) return html
+  if (typeof DOMParser === 'undefined') return html
+
   const linked: HotItem[] = []
   for (const t of topics) {
     if (t.url && t.title?.trim()) linked.push(t)
@@ -292,107 +300,106 @@ function linkifyHighlightTitles(html: string, topics: TopicItem[]): string {
       }
     }
   }
-  if (!html || !linked.length) return html
 
-  const byNorm = new Map<string, string>()
-  for (const it of linked) {
-    byNorm.set(normalizeTitle(it.title), it.url!)
-  }
-
-  const findUrl = (raw: string): string | null => {
-    const t = normalizeTitle(raw)
-    if (!t) return null
-    const exact = byNorm.get(t)
-    if (exact) return exact
-    // AI 可能微调标题：用最长包含匹配
-    let best: { url: string; len: number } | null = null
-    for (const it of linked) {
-      const nt = normalizeTitle(it.title)
-      if (!nt) continue
-      if (t.includes(nt) || nt.includes(t)) {
-        if (!best || nt.length > best.len) best = { url: it.url!, len: nt.length }
-      }
-    }
-    return best?.url ?? null
-  }
-
-  if (typeof DOMParser === 'undefined') return html
   const doc = new DOMParser().parseFromString(html, 'text/html')
   const body = doc.body
 
-  const headings = Array.from(body.querySelectorAll('h1, h2, h3, h4'))
-  const start = headings.find((h) => (h.textContent || '').includes('重点事件'))
-  const scopeRoots: Element[] = []
-  if (start) {
-    let node: ChildNode | null = start.nextSibling
-    while (node) {
-      if (node instanceof HTMLElement && /^H[1-4]$/i.test(node.tagName)) break
-      if (node instanceof HTMLElement) scopeRoots.push(node)
-      node = node.nextSibling
-    }
-  } else {
-    scopeRoots.push(body)
-  }
-
-  for (const root of scopeRoots) {
-    for (const strong of Array.from(root.querySelectorAll('strong, b'))) {
-      if (strong.closest('a')) continue
-      if (strong.querySelector('a')) continue
-      const url = findUrl(strong.textContent || '')
-      if (!url) continue
-      const a = doc.createElement('a')
-      a.href = url
-      a.target = '_blank'
-      a.rel = 'noopener noreferrer'
-      a.className = 'md-hot-link'
-      while (strong.firstChild) a.appendChild(strong.firstChild)
-      strong.appendChild(a)
+  if (linked.length) {
+    const byNorm = new Map<string, string>()
+    for (const it of linked) {
+      byNorm.set(normalizeTitle(it.title), it.url!)
     }
 
-    for (const li of Array.from(root.querySelectorAll('li'))) {
-      if (li.querySelector('a')) continue
-      const text = (li.textContent || '').trim()
-      if (!text) continue
-      let best: { title: string; url: string; len: number } | null = null
+    const findUrl = (raw: string): string | null => {
+      const t = normalizeTitle(raw)
+      if (!t) return null
+      const exact = byNorm.get(t)
+      if (exact) return exact
+      // AI 可能微调标题：用最长包含匹配
+      let best: { url: string; len: number } | null = null
       for (const it of linked) {
-        const title = it.title.trim()
-        const nt = normalizeTitle(title)
-        if (!nt || nt.length < 4) continue
-        if (normalizeTitle(text).startsWith(nt) || text.startsWith(title)) {
-          if (!best || nt.length > best.len) best = { title, url: it.url!, len: nt.length }
+        const nt = normalizeTitle(it.title)
+        if (!nt) continue
+        if (t.includes(nt) || nt.includes(t)) {
+          if (!best || nt.length > best.len) best = { url: it.url!, len: nt.length }
         }
       }
-      if (!best) continue
+      return best?.url ?? null
+    }
 
-      const walker = doc.createTreeWalker(li, NodeFilter.SHOW_TEXT)
-      let textNode: Text | null = null
-      while (walker.nextNode()) {
-        const n = walker.currentNode as Text
-        if ((n.nodeValue || '').includes(best.title)) {
-          textNode = n
-          break
-        }
+    const headings = Array.from(body.querySelectorAll('h1, h2, h3, h4'))
+    const start = headings.find((h) => (h.textContent || '').includes('重点事件'))
+    const scopeRoots: Element[] = []
+    if (start) {
+      let node: ChildNode | null = start.nextSibling
+      while (node) {
+        if (node instanceof HTMLElement && /^H[1-4]$/i.test(node.tagName)) break
+        if (node instanceof HTMLElement) scopeRoots.push(node)
+        node = node.nextSibling
       }
-      if (!textNode?.nodeValue || !textNode.parentNode) continue
-      const full = textNode.nodeValue
-      const at = full.indexOf(best.title)
-      if (at < 0) continue
-      const before = full.slice(0, at)
-      const after = full.slice(at + best.title.length)
-      const a = doc.createElement('a')
-      a.href = best.url
-      a.target = '_blank'
-      a.rel = 'noopener noreferrer'
-      a.className = 'md-hot-link'
-      a.textContent = best.title
-      const parent = textNode.parentNode
-      if (before) parent.insertBefore(doc.createTextNode(before), textNode)
-      parent.insertBefore(a, textNode)
-      if (after) parent.insertBefore(doc.createTextNode(after), textNode)
-      parent.removeChild(textNode)
+    } else {
+      scopeRoots.push(body)
+    }
+
+    for (const root of scopeRoots) {
+      for (const strong of Array.from(root.querySelectorAll('strong, b'))) {
+        if (strong.closest('a')) continue
+        if (strong.querySelector('a')) continue
+        const url = findUrl(strong.textContent || '')
+        if (!url) continue
+        const a = doc.createElement('a')
+        a.href = url
+        a.className = 'md-hot-link'
+        openLinkInNewWindow(a)
+        while (strong.firstChild) a.appendChild(strong.firstChild)
+        strong.appendChild(a)
+      }
+
+      for (const li of Array.from(root.querySelectorAll('li'))) {
+        if (li.querySelector('a')) continue
+        const text = (li.textContent || '').trim()
+        if (!text) continue
+        let best: { title: string; url: string; len: number } | null = null
+        for (const it of linked) {
+          const title = it.title.trim()
+          const nt = normalizeTitle(title)
+          if (!nt || nt.length < 4) continue
+          if (normalizeTitle(text).startsWith(nt) || text.startsWith(title)) {
+            if (!best || nt.length > best.len) best = { title, url: it.url!, len: nt.length }
+          }
+        }
+        if (!best) continue
+
+        const walker = doc.createTreeWalker(li, NodeFilter.SHOW_TEXT)
+        let textNode: Text | null = null
+        while (walker.nextNode()) {
+          const n = walker.currentNode as Text
+          if ((n.nodeValue || '').includes(best.title)) {
+            textNode = n
+            break
+          }
+        }
+        if (!textNode?.nodeValue || !textNode.parentNode) continue
+        const full = textNode.nodeValue
+        const at = full.indexOf(best.title)
+        if (at < 0) continue
+        const before = full.slice(0, at)
+        const after = full.slice(at + best.title.length)
+        const a = doc.createElement('a')
+        a.href = best.url
+        a.className = 'md-hot-link'
+        openLinkInNewWindow(a)
+        a.textContent = best.title
+        const parent = textNode.parentNode
+        if (before) parent.insertBefore(doc.createTextNode(before), textNode)
+        parent.insertBefore(a, textNode)
+        if (after) parent.insertBefore(doc.createTextNode(after), textNode)
+        parent.removeChild(textNode)
+      }
     }
   }
 
+  for (const a of Array.from(body.querySelectorAll('a'))) openLinkInNewWindow(a)
   return body.innerHTML
 }
 
